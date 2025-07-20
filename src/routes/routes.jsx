@@ -7,7 +7,7 @@ import Logs from "../pages/Logs";
 import Login from "../pages/Login";
 import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../context/AuthContext";
-
+import Home from "../pages/Home";
 // Composant pour protéger les routes
 function PrivateRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -28,7 +28,8 @@ export default function AppRoutes() {
           </PrivateRoute>
         }
       >
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/agents" element={<Agents />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/logs" element={<Logs />} />
