@@ -1,4 +1,3 @@
-// src/routes/routes.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../pages/Dashboard";
 import Agents from "../pages/Agents";
@@ -8,19 +7,12 @@ import Login from "../pages/Login";
 import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../context/AuthContext";
 import Home from "../pages/Home";
-// Composant pour protéger les routes
-function PrivateRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
-}
+import PrivateRoute from "../components/PrivateRoute";
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Page publique */}
       <Route path="/login" element={<Login />} />
-
-      {/* Pages protégées */}
       <Route
         element={
           <PrivateRoute>
@@ -34,6 +26,8 @@ export default function AppRoutes() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/logs" element={<Logs />} />
       </Route>
+      {/* rediriger tout ce qui ne matche pas vers home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
