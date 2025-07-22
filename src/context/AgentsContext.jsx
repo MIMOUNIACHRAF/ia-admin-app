@@ -13,18 +13,25 @@ export function AgentsProvider({ children }) {
     localStorage.setItem("agents", JSON.stringify(agents));
   }, [agents]);
 
-  // Exemple: fonction pour ajouter un agent
   const addAgent = (agent) => {
-    setAgents((prev) => [...prev, { ...agent, id: Date.now() }]);
+    const prompts = agent.prompts || [];
+    setAgents((prev) => [...prev, { ...agent, id: Date.now(), prompts }]);
   };
 
-  // Exemple: fonction pour supprimer un agent
   const removeAgent = (id) => {
     setAgents((prev) => prev.filter((a) => a.id !== id));
   };
 
+  const updateAgentPrompts = (id, prompts) => {
+    setAgents((prev) =>
+      prev.map((agent) =>
+        agent.id === id ? { ...agent, prompts } : agent
+      )
+    );
+  };
+
   return (
-    <AgentsContext.Provider value={{ agents, addAgent, removeAgent }}>
+    <AgentsContext.Provider value={{ agents, addAgent, removeAgent, updateAgentPrompts }}>
       {children}
     </AgentsContext.Provider>
   );
