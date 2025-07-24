@@ -1,26 +1,30 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect } from "react";
+// This file provides a compatibility layer for components that still use AuthContext
+// It uses Redux under the hood for actual state management
+
+import { createContext, useContext } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { selectIsAuthenticated } from "../features/auth/authSelectors";
+import { login as loginAction, logout as logoutAction } from "../features/auth/authThunks";
 
 const AuthContext = createContext();
 
+/**
+ * AuthProvider component that uses Redux for state management
+ * This is a compatibility layer for components that still use AuthContext
+ */
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  useEffect(() => {
-    const storedAuth = localStorage.getItem("isAuthenticated");
-    if (storedAuth === "true") {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const login = () => {
-    setIsAuthenticated(true);
-    localStorage.setItem("isAuthenticated", "true");
+  // Login function that dispatches the Redux login action
+  const login = (credentials) => {
+    dispatch(loginAction(credentials));
   };
 
+  // Logout function that dispatches the Redux logout action
   const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem("isAuthenticated");
+    dispatch(logoutAction());
   };
 
   return (
@@ -30,6 +34,10 @@ export function AuthProvider({ children }) {
   );
 }
 
+/**
+ * Custom hook to use the auth context
+ * @returns {Object} Auth context value
+ */
 export function useAuth() {
   return useContext(AuthContext);
 }

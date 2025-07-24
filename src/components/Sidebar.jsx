@@ -1,6 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-    Home as HomeIcon,
+  Home as HomeIcon,
   LayoutDashboard,
   Users,
   Settings,
@@ -8,10 +8,11 @@ import {
   LogOut,
   X,
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useDispatch } from "react-redux";
+import { logout } from "../features/auth/authThunks";
 
 const menu = [
-    { label: "Accueil", icon: <HomeIcon size={20} />, to: "/" }, // ← nouveau
+  { label: "Accueil", icon: <HomeIcon size={20} />, to: "/" },
   { label: "Dashboard", icon: <LayoutDashboard size={20} />, to: "/dashboard" },
   { label: "Agents", icon: <Users size={20} />, to: "/agents" },
   { label: "Paramètres", icon: <Settings size={20} />, to: "/settings" },
@@ -20,7 +21,13 @@ const menu = [
 
 export default function Sidebar({ onClose }) {
   const location = useLocation();
-  const { logout } = useAuth();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
 
   return (
     <aside className="flex flex-col h-full bg-white border-r shadow-sm w-64">
@@ -64,7 +71,7 @@ export default function Sidebar({ onClose }) {
 
       <div className="p-4 border-t">
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex items-center w-full px-4 py-2 text-sm text-red-600 rounded-lg hover:bg-red-100 transition"
         >
           <LogOut size={20} className="mr-3" />
