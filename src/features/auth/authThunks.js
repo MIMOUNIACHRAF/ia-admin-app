@@ -21,12 +21,7 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      
-      // Store refresh token in localStorage
-      if (response.tokens && response.tokens.refresh) {
-        localStorage.setItem('refresh_token', response.tokens.refresh);
-      }
-      
+      // Token storage is now handled in authService.login
       return response;
     } catch (error) {
       return rejectWithValue(error.message || 'Login failed');
@@ -43,14 +38,10 @@ export const logout = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await authService.logout();
-      
-      // Remove refresh token from localStorage
-      localStorage.removeItem('refresh_token');
-      
+      // Token removal is now handled in authService.logout
       return null;
     } catch (error) {
       // Even if the server-side logout fails, we still want to clear local state
-      localStorage.removeItem('refresh_token');
       return rejectWithValue(error.message || 'Logout failed');
     }
   }
@@ -64,19 +55,20 @@ export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
   async (_, { rejectWithValue }) => {
     try {
-      // Get refresh token from localStorage
-      const refreshToken = localStorage.getItem('refresh_token');
+      // Get refresh token from authService
+      const tokens = authService.getTokens();
+      const refreshTokenValue = tokens.refresh;
       
-      if (!refreshToken) {
+      if (!refreshTokenValue) {
         throw new Error('No refresh token available');
       }
       
-      const response = await authService.refreshToken(refreshToken);
+      const response = await authService.refreshToken(refreshTokenValue);
       
       return response;
     } catch (error) {
-      // If refresh fails, remove the refresh token
-      localStorage.removeItem('refresh_token');
+      // If refresh fails, clear tokens
+      authService.clearTokens();
       return rejectWithValue(error.message || 'Token refresh failed');
     }
   }
@@ -125,9 +117,10 @@ export const fetchUserData = createAsyncThunk(
 export const checkAuthState = createAsyncThunk(
   'auth/checkAuthState',
   async (_, { dispatch }) => {
-    const refreshToken = localStorage.getItem('refresh_token');
+    // Initialize auth from localStorage
+    const tokens = authService.initializeAuth();
     
-    if (refreshToken) {
+    if (tokens && tokens.refresh) {
       try {
         // Try to refresh the token
         await dispatch(refreshToken()).unwrap();

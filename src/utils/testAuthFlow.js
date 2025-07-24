@@ -1,43 +1,60 @@
 /**
- * Test Authentication Flow
+ * Authentication Flow Test Utilities
  * 
- * This script provides functions to test the authentication flow:
- * - Login
- * - Token refresh
- * - Protected routes
- * - Logout
- * 
- * Usage:
- * Import these functions in your components or use them in the browser console
- * to test the authentication flow.
+ * This file contains utility functions for testing the authentication flow.
+ * These functions can be used in the browser console to test the authentication flow.
  */
 
 import store from '../store';
-import { login, logout, refreshToken, fetchUserData, checkAuthState } from '../features/auth/authThunks';
-import { selectIsAuthenticated, selectUser, selectAccessToken } from '../features/auth/authSelectors';
-import { isTokenExpired, getTokenRemainingTime } from './tokenUtils';
-import api from '../api/axiosInstance';
-import { API_ENDPOINTS } from '../api/config';
+import { login, logout, refreshToken, checkAuthState } from '../features/auth/authThunks';
+import { setTokens } from '../features/auth/authSlice';
+import authService from '../services/authService';
+import { 
+  isTokenExpired, 
+  getTokenExpirationTime, 
+  getTokenRemainingTime,
+  decodeToken,
+  getUserFromToken,
+  formatTokenExpiration
+} from './tokenUtils';
 
 /**
- * Test login
+ * Test login with credentials
  * @param {Object} credentials - User credentials
+ * @param {string} credentials.email - User email
+ * @param {string} credentials.password - User password
  * @returns {Promise<Object>} - Login result
  */
-export const testLogin = async (credentials = { email: 'test@example.com', password: 'password' }) => {
-  console.log('Testing login with credentials:', credentials);
-  
+export const testLogin = async (credentials) => {
   try {
     const result = await store.dispatch(login(credentials)).unwrap();
     console.log('Login successful:', result);
     
-    const state = store.getState();
-    console.log('Auth state after login:', {
-      isAuthenticated: selectIsAuthenticated(state),
-      user: selectUser(state),
-      accessToken: selectAccessToken(state),
-      refreshToken: localStorage.getItem('refresh_token')
-    });
+    // Get tokens from storage
+    const tokens = authService.getTokens();
+    console.log('Tokens in storage:', tokens);
+    
+    // Decode access token
+    if (tokens.access) {
+      const decoded = decodeToken(tokens.access);
+      console.log('Decoded access token:', decoded);
+      
+      // Get user info
+      const user = getUserFromToken(tokens.access);
+      console.log('User from token:', user);
+      
+      // Check expiration
+      const isExpired = isTokenExpired(tokens.access);
+      console.log('Is token expired?', isExpired);
+      
+      // Get expiration time
+      const expTime = formatTokenExpiration(tokens.access);
+      console.log('Token expires at:', expTime);
+      
+      // Get remaining time
+      const remainingTime = getTokenRemainingTime(tokens.access);
+      console.log('Token remaining time (seconds):', remainingTime);
+    }
     
     return result;
   } catch (error) {
@@ -47,34 +64,35 @@ export const testLogin = async (credentials = { email: 'test@example.com', passw
 };
 
 /**
- * Test token refresh
- * @returns {Promise<Object>} - Refresh result
+ * Test logout
+ * @returns {Promise<void>}
  */
-export const testTokenRefresh = async () => {
-  console.log('Testing token refresh');
-  
+export const testLogout = async () => {
   try {
-    const state = store.getState();
-    const accessToken = selectAccessToken(state);
+    await store.dispatch(logout()).unwrap();
+    console.log('Logout successful');
     
-    if (!accessToken) {
-      console.error('No access token available. Please login first.');
-      return null;
-    }
-    
-    console.log('Current token expiration status:', {
-      isExpired: isTokenExpired(accessToken),
-      remainingTime: getTokenRemainingTime(accessToken)
-    });
-    
+    // Check if tokens are cleared
+    const tokens = authService.getTokens();
+    console.log('Tokens after logout:', tokens);
+  } catch (error) {
+    console.error('Logout failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * Test token refresh
+ * @returns {Promise<Object>}
+ */
+export const testRefreshToken = async () => {
+  try {
     const result = await store.dispatch(refreshToken()).unwrap();
     console.log('Token refresh successful:', result);
     
-    const newState = store.getState();
-    console.log('Auth state after refresh:', {
-      isAuthenticated: selectIsAuthenticated(newState),
-      accessToken: selectAccessToken(newState)
-    });
+    // Get new tokens from storage
+    const tokens = authService.getTokens();
+    console.log('New tokens in storage:', tokens);
     
     return result;
   } catch (error) {
@@ -84,103 +102,13 @@ export const testTokenRefresh = async () => {
 };
 
 /**
- * Test protected API call
- * @returns {Promise<Object>} - API call result
- */
-export const testProtectedApiCall = async () => {
-  console.log('Testing protected API call');
-  
-  try {
-    const state = store.getState();
-    
-    if (!selectIsAuthenticated(state)) {
-      console.error('Not authenticated. Please login first.');
-      return null;
-    }
-    
-    const result = await api.get(API_ENDPOINTS.USER);
-    console.log('Protected API call successful:', result.data);
-    
-    return result.data;
-  } catch (error) {
-    console.error('Protected API call failed:', error);
-    throw error;
-  }
-};
-
-/**
- * Test logout
- * @returns {Promise<void>}
- */
-export const testLogout = async () => {
-  console.log('Testing logout');
-  
-  try {
-    await store.dispatch(logout()).unwrap();
-    console.log('Logout successful');
-    
-    const state = store.getState();
-    console.log('Auth state after logout:', {
-      isAuthenticated: selectIsAuthenticated(state),
-      user: selectUser(state),
-      accessToken: selectAccessToken(state),
-      refreshToken: localStorage.getItem('refresh_token')
-    });
-  } catch (error) {
-    console.error('Logout failed:', error);
-    throw error;
-  }
-};
-
-/**
- * Test complete authentication flow
- * @param {Object} credentials - User credentials
- * @returns {Promise<void>}
- */
-export const testCompleteAuthFlow = async (credentials) => {
-  console.log('Testing complete authentication flow');
-  
-  try {
-    // Step 1: Login
-    await testLogin(credentials);
-    
-    // Step 2: Make a protected API call
-    await testProtectedApiCall();
-    
-    // Step 3: Refresh token
-    await testTokenRefresh();
-    
-    // Step 4: Make another protected API call after token refresh
-    await testProtectedApiCall();
-    
-    // Step 5: Logout
-    await testLogout();
-    
-    console.log('Complete authentication flow test completed successfully');
-  } catch (error) {
-    console.error('Authentication flow test failed:', error);
-    throw error;
-  }
-};
-
-/**
- * Check current authentication state
- * @returns {Promise<boolean>} - True if authenticated, false otherwise
+ * Test check auth state
+ * @returns {Promise<boolean>}
  */
 export const testCheckAuthState = async () => {
-  console.log('Checking current authentication state');
-  
   try {
     const result = await store.dispatch(checkAuthState()).unwrap();
     console.log('Auth state check result:', result);
-    
-    const state = store.getState();
-    console.log('Current auth state:', {
-      isAuthenticated: selectIsAuthenticated(state),
-      user: selectUser(state),
-      accessToken: selectAccessToken(state),
-      refreshToken: localStorage.getItem('refresh_token')
-    });
     
     return result;
   } catch (error) {
@@ -188,3 +116,62 @@ export const testCheckAuthState = async () => {
     throw error;
   }
 };
+
+/**
+ * Test manual token setting
+ * @param {Object} tokens - Tokens to set
+ * @param {string} tokens.access - Access token
+ * @param {string} tokens.refresh - Refresh token
+ */
+export const testSetTokens = (tokens) => {
+  try {
+    // Set tokens in Redux store
+    store.dispatch(setTokens(tokens));
+    console.log('Tokens set in Redux store');
+    
+    // Set tokens in storage
+    authService.setTokens(tokens);
+    console.log('Tokens set in storage');
+    
+    // Get tokens from storage to verify
+    const storedTokens = authService.getTokens();
+    console.log('Tokens in storage:', storedTokens);
+  } catch (error) {
+    console.error('Setting tokens failed:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get current auth state
+ * @returns {Object} - Current auth state
+ */
+export const getAuthState = () => {
+  const state = store.getState();
+  return state.auth;
+};
+
+// Export all functions as a single object for easy access in console
+const authTestUtils = {
+  testLogin,
+  testLogout,
+  testRefreshToken,
+  testCheckAuthState,
+  testSetTokens,
+  getAuthState,
+  tokenUtils: {
+    isTokenExpired,
+    getTokenExpirationTime,
+    getTokenRemainingTime,
+    decodeToken,
+    getUserFromToken,
+    formatTokenExpiration
+  }
+};
+
+// Make available globally when in development
+if (process.env.NODE_ENV === 'development') {
+  window.authTestUtils = authTestUtils;
+}
+
+export default authTestUtils;

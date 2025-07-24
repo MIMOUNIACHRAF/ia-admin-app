@@ -17,7 +17,7 @@ const initialState = {
   user: null,
   tokens: {
     access: null,
-    // Note: refresh token is stored in localStorage, not in Redux state
+    refresh: null,
   },
   status: {
     isAuthenticated: false,
@@ -39,6 +39,22 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.status.error = null;
     },
+    
+    /**
+     * Set tokens directly in the state
+     * Useful for initializing from localStorage or for testing
+     */
+    setTokens: (state, action) => {
+      if (action.payload.access) {
+        state.tokens.access = action.payload.access;
+      }
+      if (action.payload.refresh) {
+        state.tokens.refresh = action.payload.refresh;
+      }
+      if (action.payload.access || action.payload.refresh) {
+        state.status.isAuthenticated = true;
+      }
+    },
   },
   extraReducers: (builder) => {
     // Login
@@ -54,12 +70,23 @@ const authSlice = createSlice({
         state.user = action.payload.user;
       }
       
-      // Safely set access token if it exists in the payload
-      if (action.payload.tokens && action.payload.tokens.access) {
-        state.tokens.access = action.payload.tokens.access;
-      } else if (action.payload.access) {
-        // Alternative structure: token might be directly in the payload
-        state.tokens.access = action.payload.access;
+      // Handle different possible response structures for tokens
+      if (action.payload.tokens) {
+        // Structure: { tokens: { access, refresh } }
+        if (action.payload.tokens.access) {
+          state.tokens.access = action.payload.tokens.access;
+        }
+        if (action.payload.tokens.refresh) {
+          state.tokens.refresh = action.payload.tokens.refresh;
+        }
+      } else {
+        // Alternative structure: { access, refresh }
+        if (action.payload.access) {
+          state.tokens.access = action.payload.access;
+        }
+        if (action.payload.refresh) {
+          state.tokens.refresh = action.payload.refresh;
+        }
       }
       
       state.status.isAuthenticated = true;
@@ -84,11 +111,23 @@ const authSlice = createSlice({
     
     // Token refresh
     builder.addCase(refreshToken.fulfilled, (state, action) => {
-      // Handle different possible response structures
-      if (action.payload.tokens && action.payload.tokens.access) {
-        state.tokens.access = action.payload.tokens.access;
-      } else if (action.payload.access) {
-        state.tokens.access = action.payload.access;
+      // Handle different possible response structures for tokens
+      if (action.payload.tokens) {
+        // Structure: { tokens: { access, refresh } }
+        if (action.payload.tokens.access) {
+          state.tokens.access = action.payload.tokens.access;
+        }
+        if (action.payload.tokens.refresh) {
+          state.tokens.refresh = action.payload.tokens.refresh;
+        }
+      } else {
+        // Alternative structure: { access, refresh }
+        if (action.payload.access) {
+          state.tokens.access = action.payload.access;
+        }
+        if (action.payload.refresh) {
+          state.tokens.refresh = action.payload.refresh;
+        }
       }
     });
     builder.addCase(refreshToken.rejected, (state) => {
@@ -112,7 +151,7 @@ const authSlice = createSlice({
 });
 
 // Export actions
-export const { clearError } = authSlice.actions;
+export const { clearError, setTokens } = authSlice.actions;
 
 // Export reducer
 export default authSlice.reducer;

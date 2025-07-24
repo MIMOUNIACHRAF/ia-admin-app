@@ -10,20 +10,14 @@
 
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
 import authReducer from '../features/auth/authSlice';
 import { initializeAxios, setAxiosInstance } from '../api/axiosInstance';
+import persistConfig, { authPersistConfig } from './persistConfig';
 
 /**
- * Configure Redux Persist
- * We don't persist the access token in storage for security reasons
+ * Import persist configuration from separate file
+ * We now persist both tokens for JWT authentication
  */
-const authPersistConfig = {
-  key: 'auth',
-  storage,
-  whitelist: ['user', 'status'], // Only persist user data and authentication status
-  blacklist: ['tokens'], // Don't persist tokens in localStorage
-};
 
 /**
  * Combine all reducers

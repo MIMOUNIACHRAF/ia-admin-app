@@ -76,3 +76,51 @@ export const decodeToken = (token) => {
     return null;
   }
 };
+
+/**
+ * Get user information from a token
+ * @param {string} token - JWT token
+ * @returns {Object|null} - User information from token, or null if invalid
+ */
+export const getUserFromToken = (token) => {
+  const decoded = decodeToken(token);
+  
+  if (!decoded) return null;
+  
+  // Extract user information from token
+  // The exact properties depend on your token structure
+  // Common properties include: sub (subject/user ID), name, email, roles, etc.
+  return {
+    id: decoded.sub || decoded.user_id || decoded.id,
+    email: decoded.email,
+    username: decoded.username || decoded.name,
+    roles: decoded.roles || decoded.permissions || [],
+    // Add any other user properties from your token
+  };
+};
+
+/**
+ * Check if a token needs to be refreshed
+ * @param {string} token - JWT token
+ * @param {number} [refreshThreshold=600] - Threshold in seconds (default: 10 minutes)
+ * @returns {boolean} - True if token needs to be refreshed, false otherwise
+ */
+export const shouldRefreshToken = (token, refreshThreshold = 600) => {
+  return isTokenExpired(token, refreshThreshold);
+};
+
+/**
+ * Format token expiration time to human-readable format
+ * @param {string} token - JWT token
+ * @returns {string|null} - Formatted expiration time, or null if invalid
+ */
+export const formatTokenExpiration = (token) => {
+  const expirationTime = getTokenExpirationTime(token);
+  
+  if (!expirationTime) return null;
+  
+  // Convert to milliseconds for Date constructor
+  const expirationDate = new Date(expirationTime * 1000);
+  
+  return expirationDate.toLocaleString();
+};

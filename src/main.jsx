@@ -7,6 +7,9 @@ import App from './App.jsx'
 import './index.css'
 import { AgentsProvider } from './context/AgentsContext'
 
+// Import auth test utilities for development
+import './utils/authTestScript'
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>

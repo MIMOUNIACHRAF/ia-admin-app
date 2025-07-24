@@ -33,7 +33,8 @@ src/
 │   └── PrivateRoute.jsx    # Route protection component
 └── utils/
     ├── tokenUtils.js       # Utilities for token management
-    └── testAuthFlow.js     # Test script for authentication flow
+    ├── testAuthFlow.js     # Test utilities for authentication flow
+    └── authTestScript.js   # Browser console test script
 ```
 
 ## Authentication Flow
@@ -144,15 +145,22 @@ The authentication system uses the following API endpoints:
 
 ## Security Considerations
 
-- Access token is only stored in memory (Redux state)
-- Refresh token is stored in localStorage with proper expiration handling
+- Access token is stored in Redux state and persisted in storage
+- Refresh token is stored in storage with proper expiration handling
+- Option to use either localStorage (persistent) or sessionStorage (cleared when browser is closed)
+- "Remember me" functionality in login form controls storage type
 - All API requests are intercepted to add authentication headers
 - Token refresh happens automatically before token expiration
 - Authentication errors are handled gracefully with proper redirects
+- Token validation includes expiration checking
 
 ## Testing
 
-A test script is provided in `src/utils/testAuthFlow.js` to test the authentication flow. It includes functions to test:
+Two test utilities are provided to test the authentication flow:
+
+### 1. Advanced Testing Utilities (`src/utils/testAuthFlow.js`)
+
+This file provides comprehensive testing utilities for the authentication flow. It includes functions to test:
 
 - Login
 - Token refresh
@@ -160,4 +168,38 @@ A test script is provided in `src/utils/testAuthFlow.js` to test the authenticat
 - Logout
 - Complete authentication flow
 
-You can use these functions in the browser console or import them in your components for testing.
+You can import these functions in your components for testing or use them programmatically.
+
+### 2. Browser Console Testing (`src/utils/authTestScript.js`)
+
+This file provides a simple interface for testing the authentication flow directly in the browser console. It's automatically imported in `main.jsx` and available as `authTest` in the browser console.
+
+Usage:
+
+```javascript
+// Login with email and password
+authTest.login("user@example.com", "password");
+
+// Logout
+authTest.logout();
+
+// Refresh token
+authTest.refreshToken();
+
+// Check authentication state
+authTest.checkAuth();
+
+// Get current auth state from Redux
+authTest.getState();
+
+// Get tokens from storage
+authTest.getTokens();
+
+// Clear tokens from storage
+authTest.clearTokens();
+
+// Show help
+authTest.help();
+```
+
+This makes it easy to test the authentication flow without writing any code.
