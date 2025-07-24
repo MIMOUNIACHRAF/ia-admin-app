@@ -125,12 +125,13 @@ const authService = {
         authService.setTokens(response.data.tokens);
       } else if (response.data.access) {
         // If only access token is returned, update only that
+        const storage = getStorage();
         if (response.data.access) {
-          localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access);
+          storage.setItem(ACCESS_TOKEN_KEY, response.data.access);
         }
         // If refresh token is also returned, update it too
         if (response.data.refresh) {
-          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh);
+          storage.setItem(REFRESH_TOKEN_KEY, response.data.refresh);
         }
       }
       
