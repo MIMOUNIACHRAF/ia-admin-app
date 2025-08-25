@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login, checkAuthState } from "../features/auth/authThunks";
 import { clearError } from "../features/auth/authSlice";
 import {
@@ -13,7 +13,6 @@ import authService from "../services/authService";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [formError, setFormError] = useState("");
 
   const dispatch = useDispatch();
@@ -26,8 +25,8 @@ export default function Login() {
   useEffect(() => {
     // Clear any previous errors when component mounts
     dispatch(clearError());
-    
-    // Check if user is already authenticated (from localStorage)
+
+    // Check if user is already authenticated (access token en mémoire)
     dispatch(checkAuthState());
   }, [dispatch]);
 
@@ -43,40 +42,34 @@ export default function Login() {
       setFormError("L'email est requis");
       return false;
     }
-    
+
     if (!password) {
       setFormError("Le mot de passe est requis");
       return false;
     }
-    
-    // Basic email validation
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setFormError("Format d'email invalide");
       return false;
     }
-    
+
     setFormError("");
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
+
+    if (!validateForm()) return;
+
+    try {
+      // Login sécurisé : access token en mémoire, refresh token HttpOnly
+      await dispatch(login({ email, password })).unwrap();
+      // Redirect automatique géré par useEffect + isAuthenticated
+    } catch (err) {
+      setFormError(err?.message || "Erreur lors de la connexion");
     }
-    
-    // Set storage type based on remember me option
-    if (rememberMe) {
-      // Use localStorage (default)
-      authService.setStorageType('localStorage');
-    } else {
-      // Use sessionStorage (cleared when browser is closed)
-      authService.setStorageType('sessionStorage');
-    }
-    
-    dispatch(login({ email, password }));
   };
 
   return (
@@ -87,7 +80,7 @@ export default function Login() {
             Connexion à votre compte
           </h2>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -124,22 +117,6 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Se souvenir de moi
-              </label>
-            </div>
-          </div>
-
           {(error || formError) && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
@@ -158,17 +135,7 @@ export default function Login() {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Connexion en cours...
-                </span>
-              ) : (
-                "Se connecter"
-              )}
+              {isLoading ? "Connexion en cours..." : "Se connecter"}
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 /**
  * Auth Slice
- * 
+ *
  * This slice manages the authentication state in Redux:
  * - User information
  * - Authentication tokens
@@ -9,51 +9,27 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 import { login, logout, refreshToken, fetchUserData } from './authThunks';
+import authService from '../../services/authService'; // <-- chemin corrigé
 
-/**
- * Initial state for the auth slice
- */
 const initialState = {
   user: null,
-  tokens: {
-    access: null,
-    refresh: null,
-  },
-  status: {
-    isAuthenticated: false,
-    isLoading: false,
-    error: null
-  }
+  tokens: { access: null },
+  status: { isAuthenticated: false, isLoading: false, error: null },
 };
 
-/**
- * Auth slice with reducers and actions
- */
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    /**
-     * Clear any error in the auth state
-     */
     clearError: (state) => {
       state.status.error = null;
     },
-    
-    /**
-     * Set tokens directly in the state
-     * Useful for initializing from localStorage or for testing
-     */
     setTokens: (state, action) => {
       if (action.payload.access) {
         state.tokens.access = action.payload.access;
+        authService.setAccessToken(action.payload.access); // met à jour le token en mémoire
       }
-      if (action.payload.refresh) {
-        state.tokens.refresh = action.payload.refresh;
-      }
-      if (action.payload.access || action.payload.refresh) {
-        state.status.isAuthenticated = true;
-      }
+      state.status.isAuthenticated = !!state.tokens.access;
     },
   },
   extraReducers: (builder) => {
@@ -64,77 +40,43 @@ const authSlice = createSlice({
     });
     builder.addCase(login.fulfilled, (state, action) => {
       state.status.isLoading = false;
-      
-      // Safely set user data if it exists in the payload
-      if (action.payload.user) {
-        state.user = action.payload.user;
+      state.user = action.payload.user || null;
+
+      const access = action.payload.access || action.payload.tokens?.access;
+      if (access) {
+        state.tokens.access = access;
+        authService.setAccessToken(access);
       }
-      
-      // Handle different possible response structures for tokens
-      if (action.payload.tokens) {
-        // Structure: { tokens: { access, refresh } }
-        if (action.payload.tokens.access) {
-          state.tokens.access = action.payload.tokens.access;
-        }
-        if (action.payload.tokens.refresh) {
-          state.tokens.refresh = action.payload.tokens.refresh;
-        }
-      } else {
-        // Alternative structure: { access, refresh }
-        if (action.payload.access) {
-          state.tokens.access = action.payload.access;
-        }
-        if (action.payload.refresh) {
-          state.tokens.refresh = action.payload.refresh;
-        }
-      }
-      
-      state.status.isAuthenticated = true;
+
+      state.status.isAuthenticated = !!state.tokens.access;
     });
     builder.addCase(login.rejected, (state, action) => {
       state.status.isLoading = false;
-      state.status.error = action.payload || 'Failed to login';
+      state.status.error = action.payload || 'Login failed';
       state.status.isAuthenticated = false;
+      authService.clearAccessToken();
     });
-    
+
     // Logout
-    builder.addCase(logout.pending, (state) => {
-      state.status.isLoading = true;
-    });
-    builder.addCase(logout.fulfilled, (state) => {
+    builder.addCase(logout.fulfilled, () => {
+      authService.clearAccessToken();
       return initialState;
     });
-    builder.addCase(logout.rejected, (state) => {
-      // Even if logout fails on the server, we still clear the state
-      return initialState;
-    });
-    
-    // Token refresh
+
+    // Refresh token
     builder.addCase(refreshToken.fulfilled, (state, action) => {
-      // Handle different possible response structures for tokens
-      if (action.payload.tokens) {
-        // Structure: { tokens: { access, refresh } }
-        if (action.payload.tokens.access) {
-          state.tokens.access = action.payload.tokens.access;
-        }
-        if (action.payload.tokens.refresh) {
-          state.tokens.refresh = action.payload.tokens.refresh;
-        }
-      } else {
-        // Alternative structure: { access, refresh }
-        if (action.payload.access) {
-          state.tokens.access = action.payload.access;
-        }
-        if (action.payload.refresh) {
-          state.tokens.refresh = action.payload.refresh;
-        }
+      const access = action.payload.access;
+      if (access) {
+        state.tokens.access = access;
+        authService.setAccessToken(access);
       }
+      state.status.isAuthenticated = !!state.tokens.access;
     });
-    builder.addCase(refreshToken.rejected, (state) => {
-      // If token refresh fails, user is no longer authenticated
+    builder.addCase(refreshToken.rejected, () => {
+      authService.clearAccessToken();
       return initialState;
     });
-    
+
     // Fetch user data
     builder.addCase(fetchUserData.pending, (state) => {
       state.status.isLoading = true;
@@ -150,8 +92,5 @@ const authSlice = createSlice({
   },
 });
 
-// Export actions
 export const { clearError, setTokens } = authSlice.actions;
-
-// Export reducer
 export default authSlice.reducer;
