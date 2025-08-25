@@ -44,15 +44,31 @@ const authService = {
   },
 
   /** --- Logout --- */
-  logout: async () => {
-    try {
-      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
-      authService.clearAccessToken();
-    } catch (error) {
-      authService.clearAccessToken();
-      throw error.response?.data || { message: 'Logout failed' };
-    }
-  },
+ logout: async () => {
+  try {
+    // 1️⃣ Appel backend pour invalider le refresh token côté serveur
+    await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+
+    // 2️⃣ Supprimer tous les tokens côté client
+    authService.clearAccessToken();
+    authService.clearRefreshToken(); // si tu stockes aussi refreshToken
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 3️⃣ Réinitialiser le state Redux
+    // dispatch(logout());  // à appeler depuis ton composant ou thunk
+
+  } catch (error) {
+    // Même en cas d'erreur, nettoyer localement
+    authService.clearAccessToken();
+    authService.clearRefreshToken();
+    localStorage.clear();
+    sessionStorage.clear();
+
+    throw error.response?.data || { message: 'Logout failed' };
+  }
+},
+
 
   /** --- Refresh access token --- */
   refreshAccessToken: async () => {
