@@ -1,27 +1,15 @@
-/**
- * Secure Authentication Service
- *
- * Principles:
- * - Refresh token is HttpOnly (never stored in frontend)
- * - Access token stored in memory for security
- * - All API requests use Authorization header
- * - Automatic rotation via X-New-Access-Token header
- */
-
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
 
-let accessTokenMemory = null; // Stockage en mémoire sécurisé
+let accessTokenMemory = null; // stockage sécurisé en mémoire
 
 const authService = {
-  /** --- Access token management --- */
+  /** --- Access token --- */
   setAccessToken: (token) => {
     accessTokenMemory = token;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
-
   getAccessToken: () => accessTokenMemory,
-
   clearAccessToken: () => {
     accessTokenMemory = null;
     delete api.defaults.headers.common['Authorization'];
@@ -29,81 +17,49 @@ const authService = {
 
   /** --- Login --- */
   login: async (credentials) => {
-    try {
-      const response = await api.post(API_ENDPOINTS.LOGIN, credentials, {
-        withCredentials: true, // pour envoyer le refresh token HttpOnly
-      });
-
-      const access = response.headers['x-access-token'] || response.data.access;
-      if (access) authService.setAccessToken(access);
-
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Login failed' };
-    }
+    const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
+    const access = response.headers['x-access-token'] || response.data.access;
+    if (access) authService.setAccessToken(access);
+    return response.data;
   },
 
   /** --- Logout --- */
- logout: async () => {
-  try {
-    // 1️⃣ Appel backend pour invalider le refresh token côté serveur
-    await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+  logout: async () => {
+    try {
+      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+    } finally {
+      authService.clearAccessToken();
+    }
+  },
 
-    // 2️⃣ Supprimer tous les tokens côté client
-    authService.clearAccessToken();
-    authService.clearRefreshToken(); // si tu stockes aussi refreshToken
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // 3️⃣ Réinitialiser le state Redux
-    // dispatch(logout());  // à appeler depuis ton composant ou thunk
-
-  } catch (error) {
-    // Même en cas d'erreur, nettoyer localement
-    authService.clearAccessToken();
-    authService.clearRefreshToken();
-    localStorage.clear();
-    sessionStorage.clear();
-
-    throw error.response?.data || { message: 'Logout failed' };
-  }
-},
-
-
-  /** --- Refresh access token --- */
+  /** --- Refresh token --- */
   refreshAccessToken: async () => {
     try {
-      const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, {
-        withCredentials: true,
-      });
-
+      const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
-
       return access;
     } catch (error) {
       authService.clearAccessToken();
-      throw error.response?.data || { message: 'Refresh token failed' };
+      throw error;
     }
   },
 
-  /** --- Get current user --- */
+  /** --- Get user data --- */
   getUserData: async () => {
-    try {
-      const response = await api.get(API_ENDPOINTS.USER);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch user data' };
-    }
+    const response = await api.get(API_ENDPOINTS.USER);
+    return response.data;
   },
 
   /** --- Initialize auth --- */
-  initializeAuth: () => {
-    if (accessTokenMemory) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${accessTokenMemory}`;
-      return { access: accessTokenMemory };
+  initializeAuth: async () => {
+    if (accessTokenMemory) return { access: accessTokenMemory };
+    try {
+      const access = await authService.refreshAccessToken();
+      return { access };
+    } catch {
+      return null;
     }
-    return null;
   },
 };
 
