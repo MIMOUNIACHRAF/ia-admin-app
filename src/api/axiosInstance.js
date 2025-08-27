@@ -2,18 +2,12 @@ import axios from 'axios';
 import { API_BASE_URL } from './config';
 import authService from '../services/authService';
 
-/**
- * Axios instance par défaut (fallback)
- */
 let api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 
-/**
- * Crée une instance Axios configurée avec interceptors et Redux store
- */
 export const initializeAxios = (store) => {
   const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
@@ -21,18 +15,16 @@ export const initializeAxios = (store) => {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  // Request interceptor
   axiosInstance.interceptors.request.use(
     (config) => {
       const state = store?.getState();
-      let token = state?.auth?.tokens?.access || authService.getAccessToken();
+      const token = state?.auth?.tokens?.access || authService.getAccessToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
     },
     (error) => Promise.reject(error)
   );
 
-  // Response interceptor
   axiosInstance.interceptors.response.use(
     (response) => {
       const newAccess = response.headers['x-new-access-token'];
@@ -64,9 +56,5 @@ export const initializeAxios = (store) => {
   return axiosInstance;
 };
 
-/**
- * Permet de setter l’instance Axios globale
- */
 export const setAxiosInstance = (instance) => { api = instance; };
-
 export default api;

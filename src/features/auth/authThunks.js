@@ -1,6 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
-import { jwtDecode } from 'jwt-decode';
 
 // Login
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
@@ -38,7 +37,7 @@ export const fetchUserData = createAsyncThunk('auth/fetchUser', async (_, { reje
   }
 });
 
-// Check auth state (au reload)
+// Check auth state
 export const checkAuthState = createAsyncThunk('auth/checkAuth', async (_, { dispatch }) => {
   const tokens = await authService.initializeAuth();
   if (tokens?.access) {

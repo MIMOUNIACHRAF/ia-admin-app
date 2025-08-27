@@ -2,6 +2,7 @@ import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
 
 let accessTokenMemory = null; // stockage sécurisé en mémoire
+let skipAutoRefresh = false; // pour éviter refresh automatique sur login
 
 const authService = {
   /** --- Access token --- */
@@ -9,10 +10,17 @@ const authService = {
     accessTokenMemory = token;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
+
   getAccessToken: () => accessTokenMemory,
+
   clearAccessToken: () => {
     accessTokenMemory = null;
     delete api.defaults.headers.common['Authorization'];
+  },
+
+  /** --- Control auto-refresh --- */
+  setSkipAutoRefresh: (value) => {
+    skipAutoRefresh = value;
   },
 
   /** --- Login --- */
@@ -25,24 +33,27 @@ const authService = {
 
   /** --- Logout --- */
   logout: async () => {
-  try {
-    // Désactiver les intercepteurs avant logout
-    api.interceptors.request.handlers = [];
-    api.interceptors.response.handlers = [];
+    try {
+      skipAutoRefresh = true; // bloquer refresh pendant logout
 
-    await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+      // Désactiver les intercepteurs axios
+      api.interceptors.request.handlers = [];
+      api.interceptors.response.handlers = [];
 
-    authService.clearAccessToken();
-    localStorage.clear();
-    sessionStorage.clear();
+      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
 
-  } catch (error) {
-    authService.clearAccessToken();
-    localStorage.clear();
-    sessionStorage.clear();
-    throw error;
-  }
-},
+      authService.clearAccessToken();
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (error) {
+      authService.clearAccessToken();
+      localStorage.clear();
+      sessionStorage.clear();
+      throw error;
+    } finally {
+      skipAutoRefresh = false; // réactiver auto-refresh
+    }
+  },
 
   /** --- Refresh token --- */
   refreshAccessToken: async () => {
@@ -66,6 +77,7 @@ const authService = {
   /** --- Initialize auth --- */
   initializeAuth: async () => {
     if (accessTokenMemory) return { access: accessTokenMemory };
+    if (skipAutoRefresh) return null; // bloquer refresh automatique
     try {
       const access = await authService.refreshAccessToken();
       return { access };
