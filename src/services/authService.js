@@ -25,12 +25,24 @@ const authService = {
 
   /** --- Logout --- */
   logout: async () => {
-    try {
-      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
-    } finally {
-      authService.clearAccessToken();
-    }
-  },
+  try {
+    // Désactiver les intercepteurs avant logout
+    api.interceptors.request.handlers = [];
+    api.interceptors.response.handlers = [];
+
+    await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+
+    authService.clearAccessToken();
+    localStorage.clear();
+    sessionStorage.clear();
+
+  } catch (error) {
+    authService.clearAccessToken();
+    localStorage.clear();
+    sessionStorage.clear();
+    throw error;
+  }
+},
 
   /** --- Refresh token --- */
   refreshAccessToken: async () => {
