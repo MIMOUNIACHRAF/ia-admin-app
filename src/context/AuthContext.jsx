@@ -1,43 +1,42 @@
 // src/context/AuthContext.jsx
-// This file provides a compatibility layer for components that still use AuthContext
-// It uses Redux under the hood for actual state management
-
-import { createContext, useContext } from "react";
+import { createContext, useContext, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { selectIsAuthenticated } from "../features/auth/authSelectors";
-import { login as loginAction, logout as logoutAction } from "../features/auth/authThunks";
+import { login as loginAction, logout as logoutAction, checkAuthState } from "../features/auth/authThunks";
 
-const AuthContext = createContext();
+const AuthContext = createContext({
+  isAuthenticated: false,
+  login: async () => {},
+  logout: async () => {},
+  checkAuth: async () => false,
+});
 
-/**
- * AuthProvider component that uses Redux for state management
- * This is a compatibility layer for components that still use AuthContext
- */
 export function AuthProvider({ children }) {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  // Login function that dispatches the Redux login action
-  const login = (credentials) => {
-    dispatch(loginAction(credentials));
-  };
+  // Login function
+  const login = useCallback(async (credentials) => {
+    return dispatch(loginAction(credentials)).unwrap();
+  }, [dispatch]);
 
-  // Logout function that dispatches the Redux logout action
-  const logout = () => {
-    dispatch(logoutAction());
-  };
+  // Logout function
+  const logout = useCallback(async () => {
+    return dispatch(logoutAction()).unwrap();
+  }, [dispatch]);
+
+  // Check auth state (useful on app init / reload)
+  const checkAuth = useCallback(async () => {
+    return dispatch(checkAuthState()).unwrap();
+  }, [dispatch]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-/**
- * Custom hook to use the auth context
- * @returns {Object} Auth context value
- */
 export function useAuth() {
   return useContext(AuthContext);
 }

@@ -33,6 +33,7 @@ export const persistor = persistStore(store);
 
 /**
  * Initialise Axios avec store pour interceptors
+ * - Gère automatiquement le refresh access token
  */
 const axiosInstance = initializeAxios(store);
 setAxiosInstance(axiosInstance);

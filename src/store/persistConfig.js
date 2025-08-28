@@ -1,27 +1,19 @@
-/**
- * Redux Persist Configuration
- * 
- * This file configures Redux Persist to store authentication state
- * in localStorage or sessionStorage.
- */
-
 import storage from 'redux-persist/lib/storage'; // localStorage
-import sessionStorage from 'redux-persist/lib/storage/session'; // sessionStorage
+// import sessionStorage from 'redux-persist/lib/storage/session'; // optionnel
 
-// Using localStorage for persistence
-// For better security, you could switch to sessionStorage
-// by changing the storage import above and below
+// Root persist configuration
 const persistConfig = {
   key: 'root',
-  storage, // Use localStorage for persistence
-  whitelist: ['auth'], // Only persist auth state
+  storage, // localStorage ou sessionStorage pour plus de sécurité
+  whitelist: ['auth'], // seulement auth state
 };
 
 // Auth-specific persist configuration
 export const authPersistConfig = {
   key: 'auth',
-  storage, // Use localStorage for persistence
-  whitelist: ['user', 'status', 'tokens'], // Include tokens for persistence
+  storage,
+  whitelist: ['user', 'tokens'], // persister uniquement l'utilisateur et l'access token
+  // ⚠ Ne jamais persister le refresh token côté front-end
 };
 
 export default persistConfig;
