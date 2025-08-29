@@ -8,9 +8,9 @@ let api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// --- Vérifier l'existence du refresh token dans le cookie ---
-const hasRefreshToken = () => {
-  return document.cookie.split(';').some(cookie => cookie.trim().startsWith('refresh_token='));
+// --- Vérifier existence refresh token fallback sessionStorage (JS) ---
+const hasRefreshTokenFallback = () => {
+  return !!sessionStorage.getItem('refresh_token');
 };
 
 export const initializeAxios = (store) => {
@@ -23,23 +23,21 @@ export const initializeAxios = (store) => {
   // --- Intercepteur de requête ---
   axiosInstance.interceptors.request.use(
     (config) => {
-      // Ignorer la vérification pour login, signup ou refresh token
       const openEndpoints = ['/login', '/signup', '/refresh'];
-      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
-        return config;
-      }
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
 
-      // Vérification du refresh token pour toutes les autres requêtes
-      if (!hasRefreshToken()) {
+      // Vérification côté frontend via fallback sessionStorage
+      if (!hasRefreshTokenFallback()) {
         authService.clearAccessToken();
         if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
         return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
       }
 
-      // Injecter le access token
+      // Injecter access token
       const state = store?.getState();
       const token = state?.auth?.tokens?.access || authService.getAccessToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
+
       return config;
     },
     (error) => Promise.reject(error)
@@ -58,7 +56,7 @@ export const initializeAxios = (store) => {
     async (error) => {
       const originalRequest = error.config;
 
-      // Auto-refresh si access token expiré
+      // Auto-refresh access token
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {

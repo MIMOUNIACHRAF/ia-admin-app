@@ -8,8 +8,8 @@ const authService = {
   /** --- Access token --- */
   setAccessToken: (token) => {
     accessTokenMemory = token;
-    localStorage.setItem('access_token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    if (token) localStorage.setItem('access_token', token);
+    api.defaults.headers.common['Authorization'] = token ? `Bearer ${token}` : '';
   },
 
   getAccessToken: () => {
@@ -22,11 +22,12 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
-  /** --- Refresh token côté frontend --- */
+  /** --- Refresh token côté frontend (fallback JS) --- */
   setRefreshToken: (token) => {
-    // Stockage en session cookie HttpOnly côté frontend
-    document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
-    sessionStorage.setItem('refresh_token', token); // fallback JS (non HttpOnly)
+    if (token) {
+      document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
+      sessionStorage.setItem('refresh_token', token);
+    }
   },
 
   getRefreshToken: () => sessionStorage.getItem('refresh_token'),
@@ -52,7 +53,7 @@ const authService = {
     // Refresh token
     if (response.data?.refresh) {
       authService.setRefreshToken(response.data.refresh);
-      delete response.data.refresh; // sécurité
+      delete response.data.refresh;
     }
 
     return response.data;
@@ -63,13 +64,11 @@ const authService = {
     try {
       skipAutoRefresh = true;
 
-      // Supprime tokens côté frontend
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
       sessionStorage.clear();
 
-      // Appel backend pour supprimer refresh token HttpOnly
       await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
     } catch (error) {
       authService.clearAccessToken();
@@ -86,7 +85,7 @@ const authService = {
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
 
-    // Vérifier si refresh token existe
+    // Si refresh token absent, déconnexion forcée
     if (!authService.getRefreshToken()) {
       await authService.logout();
       return null;
@@ -122,12 +121,6 @@ const authService = {
   initializeAuth: async () => {
     if (accessTokenMemory) return { access: accessTokenMemory };
     if (skipAutoRefresh) return null;
-
-    // Si refresh token absent, déconnexion forcée
-    if (!authService.getRefreshToken()) {
-      await authService.logout();
-      return null;
-    }
 
     try {
       const access = await authService.refreshAccessToken();
