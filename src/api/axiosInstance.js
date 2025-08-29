@@ -8,8 +8,11 @@ let api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Vérifie la présence du refresh token
-const hasRefreshToken = () => !!authService.getRefreshToken();
+// Vérifie si refresh token existe dans session cookie ou fallback
+const hasRefreshToken = () => {
+  return document.cookie.split(';').some(cookie => cookie.trim().startsWith('refresh_token=')) ||
+         sessionStorage.getItem('refresh_token');
+};
 
 export const initializeAxios = (store) => {
   const axiosInstance = axios.create({
@@ -18,24 +21,32 @@ export const initializeAxios = (store) => {
     headers: { 'Content-Type': 'application/json' },
   });
 
+  // Intercepteur de requête
   axiosInstance.interceptors.request.use(
     (config) => {
+      // ✅ Ignorer la vérification pour les endpoints ouverts
       const openEndpoints = ['/login', '/signup', '/refresh'];
-      if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
+        return config;
+      }
 
+      // Vérification du refresh token uniquement pour les requêtes sécurisées
       if (!hasRefreshToken()) {
         authService.clearAccessToken();
         if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
         return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
       }
 
-      const token = authService.getAccessToken() || store?.getState()?.auth?.tokens?.access;
+      // Injection du access token si disponible
+      const state = store?.getState();
+      const token = state?.auth?.tokens?.access || authService.getAccessToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
     },
     (error) => Promise.reject(error)
   );
 
+  // Intercepteur de réponse
   axiosInstance.interceptors.response.use(
     (response) => {
       const newAccess = response.headers['x-new-access-token'];
@@ -47,7 +58,6 @@ export const initializeAxios = (store) => {
     },
     async (error) => {
       const originalRequest = error.config;
-
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
@@ -61,7 +71,6 @@ export const initializeAxios = (store) => {
           return Promise.reject(error);
         }
       }
-
       return Promise.reject(error);
     }
   );
