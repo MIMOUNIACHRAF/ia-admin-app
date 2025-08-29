@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { selectIsAuthenticated, selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
+import { isRefreshTokenPresent } from "../utils/tokenUtils"; // fonction que tu as ajoutée
 
 export default function PrivateRoute() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
@@ -16,18 +17,36 @@ export default function PrivateRoute() {
   useEffect(() => {
     const checkToken = async () => {
       try {
+        // Vérifier access token
         let token = accessToken || authService.getAccessToken();
 
         if (token) {
           dispatch(setTokens({ access: token }));
           setIsTokenValid(true);
         } else {
-          // Pas de token → redirection login
-          setIsTokenValid(false);
+          // Si pas de token, vérifier refresh token
+          const refreshExists = await isRefreshTokenPresent();
+          if (!refreshExists) {
+            // Logout direct si refresh token absent
+            await authService.logout();
+            setIsTokenValid(false);
+          } else {
+            // Sinon, tenter de refresh l'access token
+            const newAccess = await authService.refreshAccessToken();
+            if (newAccess) {
+              dispatch(setTokens({ access: newAccess }));
+              setIsTokenValid(true);
+            } else {
+              await authService.logout();
+              setIsTokenValid(false);
+            }
+          }
         }
 
         setIsCheckingAuth(false);
-      } catch {
+      } catch (err) {
+        console.error("Erreur auth:", err);
+        await authService.logout();
         setIsTokenValid(false);
         setIsCheckingAuth(false);
       }

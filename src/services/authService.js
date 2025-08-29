@@ -1,5 +1,6 @@
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
+import { isRefreshTokenPresent } from '../utils/tokenUtils'; // chemin vers ton fichier avec la fonction
 
 let accessTokenMemory = null;
 let skipAutoRefresh = false;
@@ -74,17 +75,10 @@ const authService = {
 
       return access;
     } catch {
-      // Refresh échoué → logout direct
       authService.clearAccessToken();
       authService.clearRefreshToken();
       return null;
     }
-  },
-
-  // --- Get user data ---
-  getUserData: async () => {
-    const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
-    return response.data;
   },
 
   // --- Initialize auth après reload ---
@@ -97,9 +91,22 @@ const authService = {
       return { access };
     }
 
-    // Si access token absent → tenter refresh
+    // Vérifier si refresh token existe (cookie ou backend)
+    const refreshExists = await isRefreshTokenPresent();
+    if (!refreshExists) {
+      await authService.logout();
+      return null;
+    }
+
+    // Sinon, tenter refresh
     const newAccess = await authService.refreshAccessToken();
     return newAccess ? { access: newAccess } : null;
+  },
+
+  // --- Get user data ---
+  getUserData: async () => {
+    const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
+    return response.data;
   },
 };
 
