@@ -1,7 +1,7 @@
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
 
-let accessTokenMemory = null; // stockage en mémoire
+let accessTokenMemory = null;
 let skipAutoRefresh = false;
 
 const authService = {
@@ -20,18 +20,14 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
-  /** --- Refresh token --- */
+  /** --- Refresh token uniquement côté cookie (HttpOnly) --- */
   setRefreshToken: (token) => {
-    // Cookie HttpOnly côté backend idéalement, fallback JS pour session
     document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
-    sessionStorage.setItem('refresh_token', token);
+    // Pas de sessionStorage
   },
-
-  getRefreshToken: () => sessionStorage.getItem('refresh_token'),
 
   clearRefreshToken: () => {
     document.cookie = 'refresh_token=; path=/; max-age=0';
-    sessionStorage.removeItem('refresh_token');
   },
 
   /** --- Control auto-refresh --- */
@@ -59,14 +55,7 @@ const authService = {
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
-      sessionStorage.clear();
       await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
-    } catch (error) {
-      authService.clearAccessToken();
-      authService.clearRefreshToken();
-      localStorage.clear();
-      sessionStorage.clear();
-      throw error;
     } finally {
       skipAutoRefresh = false;
     }
@@ -76,12 +65,8 @@ const authService = {
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
 
-    if (!authService.getRefreshToken()) {
-      await authService.logout();
-      return null;
-    }
-
     try {
+      // Le backend lit le cookie HttpOnly et renvoie un nouveau access token
       const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
       const access = response.headers['x-new-access-token'] || response.data.access;
 
@@ -111,12 +96,8 @@ const authService = {
     if (accessTokenMemory) return { access: accessTokenMemory };
     if (skipAutoRefresh) return null;
 
-    if (!authService.getRefreshToken()) {
-      await authService.logout();
-      return null;
-    }
-
     try {
+      // On essaye de refresh le token via cookie HttpOnly
       const access = await authService.refreshAccessToken();
       return access ? { access } : null;
     } catch {
