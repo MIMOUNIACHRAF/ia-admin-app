@@ -5,8 +5,7 @@ let accessTokenMemory = null;
 let skipAutoRefresh = false;
 
 const authService = {
-
-  /** --- Access token --- */
+  // --- Access token ---
   setAccessToken: (token) => {
     accessTokenMemory = token;
     localStorage.setItem('access_token', token);
@@ -21,9 +20,9 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
-  /** --- Refresh token côté cookie HttpOnly --- */
+  // --- Refresh token côté cookie HttpOnly ---
   setRefreshToken: (token) => {
-    document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
+    document.cookie = `refresh_token=${token}; path=/; samesite=strict`;
   },
 
   clearRefreshToken: () => {
@@ -32,7 +31,7 @@ const authService = {
 
   setSkipAutoRefresh: (value) => { skipAutoRefresh = value; },
 
-  /** --- Login --- */
+  // --- Login ---
   login: async (credentials) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
     const access = response.headers['x-access-token'] || response.data.access;
@@ -46,7 +45,7 @@ const authService = {
     return response.data;
   },
 
-  /** --- Logout --- */
+  // --- Logout ---
   logout: async () => {
     try {
       skipAutoRefresh = true;
@@ -59,9 +58,10 @@ const authService = {
     }
   },
 
-  /** --- Refresh access token --- */
+  // --- Refresh access token ---
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
+
     try {
       const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
       const access = response.headers['x-new-access-token'] || response.data.access;
@@ -73,25 +73,34 @@ const authService = {
       }
 
       return access;
-    } catch (error) {
+    } catch {
+      // Refresh échoué → logout direct
       authService.clearAccessToken();
       authService.clearRefreshToken();
-      throw error;
+      return null;
     }
   },
 
-  /** --- Initialize auth après reload --- */
+  // --- Get user data ---
+  getUserData: async () => {
+    const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
+    return response.data;
+  },
+
+  // --- Initialize auth après reload ---
   initializeAuth: async () => {
-    // 1️⃣ Si access token en mémoire ou localStorage → OK
-    let access = accessTokenMemory || localStorage.getItem('access_token');
+    if (accessTokenMemory) return { access: accessTokenMemory };
+
+    const access = localStorage.getItem('access_token');
     if (access) {
       authService.setAccessToken(access);
-      return { access, isAuthenticated: true };
+      return { access };
     }
 
-    // 2️⃣ Premier accès, pas de token → ne pas tenter refresh
-    return { access: null, isAuthenticated: false };
-  }
+    // Si access token absent → tenter refresh
+    const newAccess = await authService.refreshAccessToken();
+    return newAccess ? { access: newAccess } : null;
+  },
 };
 
 export default authService;
