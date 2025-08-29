@@ -2,20 +2,38 @@ import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
 
 let accessTokenMemory = null; // stockage sécurisé en mémoire
-let skipAutoRefresh = false; // pour éviter refresh automatique pendant logout
+let skipAutoRefresh = false;
 
 const authService = {
   /** --- Access token --- */
   setAccessToken: (token) => {
     accessTokenMemory = token;
+    localStorage.setItem('access_token', token);
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   },
 
-  getAccessToken: () => accessTokenMemory,
+  getAccessToken: () => {
+    return accessTokenMemory || localStorage.getItem('access_token');
+  },
 
   clearAccessToken: () => {
     accessTokenMemory = null;
+    localStorage.removeItem('access_token');
     delete api.defaults.headers.common['Authorization'];
+  },
+
+  /** --- Refresh token côté frontend --- */
+  setRefreshToken: (token) => {
+    // Stockage en session cookie HttpOnly côté frontend
+    document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
+    sessionStorage.setItem('refresh_token', token); // fallback JS (non HttpOnly)
+  },
+
+  getRefreshToken: () => sessionStorage.getItem('refresh_token'),
+
+  clearRefreshToken: () => {
+    document.cookie = 'refresh_token=; path=/; max-age=0';
+    sessionStorage.removeItem('refresh_token');
   },
 
   /** --- Control auto-refresh --- */
@@ -25,10 +43,18 @@ const authService = {
 
   /** --- Login --- */
   login: async (credentials) => {
-    // Le refresh token reste côté cookie HttpOnly côté backend
     const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
+
+    // Access token
     const access = response.headers['x-access-token'] || response.data.access;
     if (access) authService.setAccessToken(access);
+
+    // Refresh token
+    if (response.data?.refresh) {
+      authService.setRefreshToken(response.data.refresh);
+      delete response.data.refresh; // sécurité
+    }
+
     return response.data;
   },
 
@@ -37,18 +63,17 @@ const authService = {
     try {
       skipAutoRefresh = true;
 
-      // Désactiver temporairement les intercepteurs pour logout
-      api.interceptors.request.handlers = [];
-      api.interceptors.response.handlers = [];
-
-      // Appel backend pour supprimer le cookie refresh token
-      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
-
+      // Supprime tokens côté frontend
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       localStorage.clear();
       sessionStorage.clear();
+
+      // Appel backend pour supprimer refresh token HttpOnly
+      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
     } catch (error) {
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       localStorage.clear();
       sessionStorage.clear();
       throw error;
@@ -60,14 +85,29 @@ const authService = {
   /** --- Refresh access token --- */
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
+
+    // Vérifier si refresh token existe
+    if (!authService.getRefreshToken()) {
+      await authService.logout();
+      return null;
+    }
+
     try {
-      // Le refresh token est automatiquement envoyé via cookie HttpOnly
       const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
+
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
+
+      // Nouveau refresh token éventuel
+      if (response.data?.refresh) {
+        authService.setRefreshToken(response.data.refresh);
+        delete response.data.refresh;
+      }
+
       return access;
     } catch (error) {
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       throw error;
     }
   },
@@ -82,8 +122,14 @@ const authService = {
   initializeAuth: async () => {
     if (accessTokenMemory) return { access: accessTokenMemory };
     if (skipAutoRefresh) return null;
+
+    // Si refresh token absent, déconnexion forcée
+    if (!authService.getRefreshToken()) {
+      await authService.logout();
+      return null;
+    }
+
     try {
-      // Tente de récupérer un nouvel access token depuis le refresh token (cookie)
       const access = await authService.refreshAccessToken();
       return access ? { access } : null;
     } catch {

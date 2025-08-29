@@ -1,35 +1,47 @@
-// utils/axiosInstance.js
 import axios from 'axios';
 import { API_BASE_URL } from './config';
 import authService from '../services/authService';
 
 let api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // 🔑 indispensable pour envoyer les cookies HttpOnly
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
 
+// --- Vérifier l'existence du refresh token dans le cookie ---
+const hasRefreshToken = () => {
+  return document.cookie.split(';').some(cookie => cookie.trim().startsWith('refresh_token='));
+};
+
 export const initializeAxios = (store) => {
-  const instance = axios.create({
+  const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: { 'Content-Type': 'application/json' },
   });
 
-  // Intercepteur de requête pour injecter le token
-  instance.interceptors.request.use(
+  // --- Intercepteur de requête ---
+  axiosInstance.interceptors.request.use(
     (config) => {
-      const token = authService.getAccessToken() || store?.getState()?.auth?.tokens?.access;
+      // Si le refresh token n'existe pas, déconnecter l'utilisateur
+      if (!hasRefreshToken()) {
+        authService.clearAccessToken();
+        if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
+        return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
+      }
+
+      // Injecter le access token
+      const state = store?.getState();
+      const token = state?.auth?.tokens?.access || authService.getAccessToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
     },
     (error) => Promise.reject(error)
   );
 
-  // Intercepteur de réponse pour gérer refresh token et renouvellement d'access token
-  instance.interceptors.response.use(
+  // --- Intercepteur de réponse ---
+  axiosInstance.interceptors.response.use(
     (response) => {
-      // Si le backend renvoie un nouveau access token
       const newAccess = response.headers['x-new-access-token'];
       if (newAccess) {
         authService.setAccessToken(newAccess);
@@ -40,16 +52,16 @@ export const initializeAxios = (store) => {
     async (error) => {
       const originalRequest = error.config;
 
-      // Si 401, essayer de refresh le token une seule fois
+      // Auto-refresh si access token expiré
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
           const newAccess = await authService.refreshAccessToken();
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           if (store) store.dispatch({ type: 'auth/setTokens', payload: { access: newAccess } });
-          return instance(originalRequest);
+          return axiosInstance(originalRequest);
         } catch {
-          // Si refresh échoue, déconnecter
+          // Si refresh échoue → déconnexion
           authService.clearAccessToken();
           if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
           return Promise.reject(error);
@@ -60,9 +72,8 @@ export const initializeAxios = (store) => {
     }
   );
 
-  return instance;
+  return axiosInstance;
 };
 
-// Permet de remplacer l'instance globale si besoin
 export const setAxiosInstance = (instance) => { api = instance; };
 export default api;
