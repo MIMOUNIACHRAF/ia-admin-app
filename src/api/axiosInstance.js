@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, API_ENDPOINTS } from './config';
 import authService from '../services/authService';
 
 let api = axios.create({
@@ -21,11 +21,11 @@ export const initializeAxios = (store) => {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  // Intercepteur de requête
+  // --- Intercepteur de requête ---
   axiosInstance.interceptors.request.use(
     (config) => {
       // ✅ Ignorer la vérification pour les endpoints ouverts
-      const openEndpoints = ['/login', '/signup', '/refresh'];
+      const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN];
       if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
         return config;
       }
@@ -46,9 +46,10 @@ export const initializeAxios = (store) => {
     (error) => Promise.reject(error)
   );
 
-  // Intercepteur de réponse
+  // --- Intercepteur de réponse ---
   axiosInstance.interceptors.response.use(
     (response) => {
+      // Si backend renvoie un nouveau access token
       const newAccess = response.headers['x-new-access-token'];
       if (newAccess) {
         authService.setAccessToken(newAccess);
@@ -58,19 +59,24 @@ export const initializeAxios = (store) => {
     },
     async (error) => {
       const originalRequest = error.config;
+
+      // Auto-refresh si access token expiré
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
           const newAccess = await authService.refreshAccessToken();
+          if (!newAccess) throw new Error('Refresh token absent');
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           if (store) store.dispatch({ type: 'auth/setTokens', payload: { access: newAccess } });
           return axiosInstance(originalRequest);
         } catch {
+          // Si refresh échoue → déconnexion
           authService.clearAccessToken();
           if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
           return Promise.reject(error);
         }
       }
+
       return Promise.reject(error);
     }
   );
