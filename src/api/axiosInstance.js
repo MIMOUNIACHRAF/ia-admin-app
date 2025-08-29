@@ -21,9 +21,13 @@ export const initializeAxios = (store) => {
       const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, '/signup'];
       if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
 
-      const state = store?.getState();
-      const token = state?.auth?.tokens?.access || authService.getAccessToken();
-      if (token) config.headers.Authorization = `Bearer ${token}`;
+      const token = authService.getAccessToken();
+      if (!token) {
+        if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
+        return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
+      }
+
+      config.headers.Authorization = `Bearer ${token}`;
       return config;
     },
     (error) => Promise.reject(error)
@@ -47,6 +51,7 @@ export const initializeAxios = (store) => {
         try {
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) throw new Error('Refresh token absent');
+
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           if (store) store.dispatch({ type: 'auth/setTokens', payload: { access: newAccess } });
           return axiosInstance(originalRequest);
