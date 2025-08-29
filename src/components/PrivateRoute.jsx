@@ -7,20 +7,30 @@ import { setTokens } from "../features/auth/authSlice";
 
 export default function PrivateRoute() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
-  const [loading, setLoading] = useState(true);
-  const [valid, setValid] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isTokenValid, setIsTokenValid] = useState(false);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const result = await authService.initializeAuth(dispatch, setTokens);
-      setValid(result.isAuthenticated);
-      setLoading(false);
+    const checkToken = async () => {
+      try {
+        // Vérifie access token en Redux ou localStorage
+        let token = accessToken || authService.getAccessToken();
+        if (token) {
+          dispatch(setTokens({ access: token }));
+          setIsTokenValid(true);
+        }
+        setIsCheckingAuth(false);
+      } catch {
+        setIsTokenValid(false);
+        setIsCheckingAuth(false);
+      }
     };
-    initAuth();
-  }, [dispatch]);
+    checkToken();
+  }, [accessToken, dispatch]);
 
-  if (loading) return <div>Loading...</div>;
+  if (isCheckingAuth) return <div>Loading...</div>;
 
-  return valid ? <Outlet /> : <Navigate to="/login" replace />;
+  return isTokenValid ? <Outlet /> : <Navigate to="/login" replace />;
 }

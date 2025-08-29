@@ -15,7 +15,7 @@ export const initializeAxios = (store) => {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  // --- Intercepteur de requête ---
+  // --- Requête ---
   axiosInstance.interceptors.request.use(
     (config) => {
       const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, '/signup'];
@@ -29,7 +29,7 @@ export const initializeAxios = (store) => {
     (error) => Promise.reject(error)
   );
 
-  // --- Intercepteur de réponse ---
+  // --- Réponse ---
   axiosInstance.interceptors.response.use(
     (response) => {
       const newAccess = response.headers['x-new-access-token'];
@@ -42,16 +42,13 @@ export const initializeAxios = (store) => {
     async (error) => {
       const originalRequest = error.config;
 
-      // Auto-refresh si 401
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) throw new Error('Refresh token absent');
-
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           if (store) store.dispatch({ type: 'auth/setTokens', payload: { access: newAccess } });
-
           return axiosInstance(originalRequest);
         } catch {
           authService.clearAccessToken();

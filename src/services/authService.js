@@ -5,6 +5,8 @@ let accessTokenMemory = null;
 let skipAutoRefresh = false;
 
 const authService = {
+
+  /** --- Access token --- */
   setAccessToken: (token) => {
     accessTokenMemory = token;
     localStorage.setItem('access_token', token);
@@ -19,6 +21,7 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
+  /** --- Refresh token côté cookie HttpOnly --- */
   setRefreshToken: (token) => {
     document.cookie = `refresh_token=${token}; path=/; samesite=strict;`;
   },
@@ -29,14 +32,21 @@ const authService = {
 
   setSkipAutoRefresh: (value) => { skipAutoRefresh = value; },
 
+  /** --- Login --- */
   login: async (credentials) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
     const access = response.headers['x-access-token'] || response.data.access;
     if (access) authService.setAccessToken(access);
-    if (response.data?.refresh) authService.setRefreshToken(response.data.refresh);
+
+    if (response.data?.refresh) {
+      authService.setRefreshToken(response.data.refresh);
+      delete response.data.refresh;
+    }
+
     return response.data;
   },
 
+  /** --- Logout --- */
   logout: async () => {
     try {
       skipAutoRefresh = true;
@@ -49,42 +59,37 @@ const authService = {
     }
   },
 
+  /** --- Refresh access token --- */
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
     try {
       const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
-      if (response.data?.refresh) authService.setRefreshToken(response.data.refresh);
+
+      if (response.data?.refresh) {
+        authService.setRefreshToken(response.data.refresh);
+        delete response.data.refresh;
+      }
+
       return access;
     } catch (error) {
       authService.clearAccessToken();
       authService.clearRefreshToken();
-      return null;
+      throw error;
     }
   },
 
-  initializeAuth: async (dispatch, setTokensAction) => {
-    // 1️⃣ Token en mémoire
+  /** --- Initialize auth après reload --- */
+  initializeAuth: async () => {
+    // 1️⃣ Si access token en mémoire ou localStorage → OK
     let access = accessTokenMemory || localStorage.getItem('access_token');
     if (access) {
-      // injection dans Redux
-      if (dispatch && setTokensAction) dispatch(setTokensAction({ access }));
+      authService.setAccessToken(access);
       return { access, isAuthenticated: true };
     }
 
-    // 2️⃣ Tenter refresh via cookie HttpOnly
-    try {
-      access = await authService.refreshAccessToken();
-      if (access && dispatch && setTokensAction) {
-        dispatch(setTokensAction({ access }));
-        return { access, isAuthenticated: true };
-      }
-    } catch {
-      authService.clearAccessToken();
-      authService.clearRefreshToken();
-    }
-
+    // 2️⃣ Premier accès, pas de token → ne pas tenter refresh
     return { access: null, isAuthenticated: false };
   }
 };
