@@ -8,10 +8,8 @@ let api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// --- Vérifier existence refresh token fallback sessionStorage (JS) ---
-const hasRefreshTokenFallback = () => {
-  return !!sessionStorage.getItem('refresh_token');
-};
+// Vérifie si le refresh token existe dans le cookie/sessionStorage
+const hasRefreshToken = () => !!authService.getRefreshToken();
 
 export const initializeAxios = (store) => {
   const axiosInstance = axios.create({
@@ -20,30 +18,29 @@ export const initializeAxios = (store) => {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  // --- Intercepteur de requête ---
   axiosInstance.interceptors.request.use(
     (config) => {
+      // Endpoints publics qui ne nécessitent pas de session
       const openEndpoints = ['/login', '/signup', '/refresh'];
-      if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
+        return config;
+      }
 
-      // Vérification côté frontend via fallback sessionStorage
-      if (!hasRefreshTokenFallback()) {
+      // Pour toutes les autres requêtes, vérifier le refresh token
+      if (!hasRefreshToken()) {
         authService.clearAccessToken();
         if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
         return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
       }
 
       // Injecter access token
-      const state = store?.getState();
-      const token = state?.auth?.tokens?.access || authService.getAccessToken();
+      const token = authService.getAccessToken() || store?.getState()?.auth?.tokens?.access;
       if (token) config.headers.Authorization = `Bearer ${token}`;
-
       return config;
     },
     (error) => Promise.reject(error)
   );
 
-  // --- Intercepteur de réponse ---
   axiosInstance.interceptors.response.use(
     (response) => {
       const newAccess = response.headers['x-new-access-token'];
@@ -56,7 +53,6 @@ export const initializeAxios = (store) => {
     async (error) => {
       const originalRequest = error.config;
 
-      // Auto-refresh access token
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
@@ -65,7 +61,6 @@ export const initializeAxios = (store) => {
           if (store) store.dispatch({ type: 'auth/setTokens', payload: { access: newAccess } });
           return axiosInstance(originalRequest);
         } catch {
-          // Si refresh échoue → déconnexion
           authService.clearAccessToken();
           if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
           return Promise.reject(error);
