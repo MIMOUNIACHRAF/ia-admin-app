@@ -23,7 +23,13 @@ export const initializeAxios = (store) => {
   // --- Intercepteur de requête ---
   axiosInstance.interceptors.request.use(
     (config) => {
-      // Si le refresh token n'existe pas, déconnecter l'utilisateur
+      // Ignorer la vérification pour login, signup ou refresh token
+      const openEndpoints = ['/login', '/signup', '/refresh'];
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
+        return config;
+      }
+
+      // Vérification du refresh token pour toutes les autres requêtes
       if (!hasRefreshToken()) {
         authService.clearAccessToken();
         if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
