@@ -1,6 +1,6 @@
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
-import { isRefreshTokenPresent } from '../utils/tokenUtils'; // chemin vers ton fichier avec la fonction
+import { isRefreshTokenPresent } from '../utils/authUtils'; // chemin vers ton fichier avec la fonction
 
 let accessTokenMemory = null;
 let skipAutoRefresh = false;

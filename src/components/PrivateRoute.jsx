@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { selectIsAuthenticated, selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
-import { isRefreshTokenPresent } from "../utils/tokenUtils"; // fonction que tu as ajoutée
+import { isRefreshTokenPresent } from "../utils/authUtils"; // fonction que tu as ajoutée
 
 export default function PrivateRoute() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
