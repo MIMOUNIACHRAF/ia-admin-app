@@ -8,7 +8,7 @@ let api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Vérifie si le refresh token existe dans le cookie/sessionStorage
+// Vérifie la présence du refresh token
 const hasRefreshToken = () => !!authService.getRefreshToken();
 
 export const initializeAxios = (store) => {
@@ -20,20 +20,15 @@ export const initializeAxios = (store) => {
 
   axiosInstance.interceptors.request.use(
     (config) => {
-      // Endpoints publics qui ne nécessitent pas de session
       const openEndpoints = ['/login', '/signup', '/refresh'];
-      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
-        return config;
-      }
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
 
-      // Pour toutes les autres requêtes, vérifier le refresh token
       if (!hasRefreshToken()) {
         authService.clearAccessToken();
         if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
         return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
       }
 
-      // Injecter access token
       const token = authService.getAccessToken() || store?.getState()?.auth?.tokens?.access;
       if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
