@@ -23,28 +23,28 @@ export const initializeAxios = (store) => {
 
   // --- Intercepteur de requête ---
   axiosInstance.interceptors.request.use(
-    (config) => {
-      // ✅ Ignorer la vérification pour les endpoints ouverts
-      const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN];
-      if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
-        return config;
-      }
+  (config) => {
+    // ✅ Ignorer la vérification pour les endpoints ouverts
+    const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, '/signup'];
+    if (openEndpoints.some(ep => config.url?.endsWith(ep))) {
+      return config; // ne rien vérifier
+    }
 
-      // Vérification du refresh token uniquement pour les requêtes sécurisées
-      if (!hasRefreshToken()) {
-        authService.clearAccessToken();
-        if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
-        return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
-      }
+    // Vérification du refresh token uniquement pour les requêtes sécurisées
+    if (!hasRefreshToken()) {
+      authService.clearAccessToken();
+      if (store) store.dispatch({ type: 'auth/logout/fulfilled', payload: null });
+      return Promise.reject(new Error('Session expirée. Veuillez vous reconnecter.'));
+    }
 
-      // Injection du access token si disponible
-      const state = store?.getState();
-      const token = state?.auth?.tokens?.access || authService.getAccessToken();
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
+    // Injection du access token si disponible
+    const state = store?.getState();
+    const token = state?.auth?.tokens?.access || authService.getAccessToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
   // --- Intercepteur de réponse ---
   axiosInstance.interceptors.response.use(
