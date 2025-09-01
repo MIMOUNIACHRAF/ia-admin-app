@@ -90,6 +90,7 @@ const authService = {
           },
         }
       );
+      console.log("Token refresh response :", refreshToken);
 
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
