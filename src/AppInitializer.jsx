@@ -1,41 +1,32 @@
 import { useEffect, useRef } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import authService from "./services/authService";
-import { setTokens, logout } from "./features/auth/authSlice";
-import { isRefreshTokenPresent } from "./utils/authUtils";
+import { setTokens } from "./features/auth/authSlice";
 
 export default function AppInitializer({ children }) {
   const dispatch = useDispatch();
-  const hasChecked = useRef(false); // ✅ flag pour éviter la boucle
+  const hasChecked = useRef(false);
+  const accessToken = useSelector((state) => state.auth.tokens.access);
 
   useEffect(() => {
-    if (hasChecked.current) return; // déjà vérifié
+    if (hasChecked.current) return;
     hasChecked.current = true;
 
     const initAuth = async () => {
-      console.log("Vérification du refresh token...");
-      const refreshExists = await isRefreshTokenPresent();
-      console.log("Refresh token présent ?", refreshExists);
-
-      if (!refreshExists) {
-        console.log("Refresh token absent. Déconnexion forcée.");
-        await authService.logout();
-        dispatch(logout());
+      if (!accessToken) {
+        // Pas encore loggé, rien à faire
         return;
       }
 
+      // Si accessToken présent, tenter refresh
       const newAccess = await authService.refreshAccessToken();
       if (newAccess) {
         dispatch(setTokens({ access: newAccess }));
-      } else {
-        console.log("Impossible de rafraîchir le token. Déconnexion.");
-        await authService.logout();
-        dispatch(logout());
       }
     };
 
     initAuth();
-  }, [dispatch]);
+  }, [dispatch, accessToken]);
 
   return children;
 }
