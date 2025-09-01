@@ -1,13 +1,14 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
-import { selectAccessToken } from "../features/auth/authSelectors";
+import { selectAccessToken, selectIsAuthenticated } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
 import { isRefreshTokenPresent } from "../utils/authUtils";
 
 export default function PrivateRoute() {
   const accessToken = useSelector(selectAccessToken);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -15,39 +16,31 @@ export default function PrivateRoute() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("Cookies actuels :", document.cookie);
-
-        // Vérifier access token en mémoire ou localStorage
         let token = accessToken || authService.getAccessToken();
 
         if (token) {
           dispatch(setTokens({ access: token }));
         } else {
-          // Vérifier refresh token dans cookie
           const refreshExists = await isRefreshTokenPresent();
 
           if (!refreshExists) {
-            console.log("Refresh token absent. Déconnexion forcée.");
             await authService.logout();
-            navigate("/login", { replace: true }); // ← redirection immédiate
+            navigate("/login", { replace: true });
             return;
           }
 
-          // Tenter de refresh access token si refresh token présent
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) {
             await authService.logout();
-            navigate("/login", { replace: true }); // ← redirection immédiate
+            navigate("/login", { replace: true });
             return;
           }
 
           dispatch(setTokens({ access: newAccess }));
         }
       } catch (err) {
-        console.error("Erreur auth:", err);
         await authService.logout();
-        navigate("/login", { replace: true }); // ← redirection immédiate
-        return;
+        navigate("/login", { replace: true });
       } finally {
         setIsCheckingAuth(false);
       }
@@ -56,8 +49,18 @@ export default function PrivateRoute() {
     checkAuth();
   }, [accessToken, dispatch, navigate]);
 
-  // ⚡ Tant que l'auth est en cours de vérification, rien n'est rendu
-  if (isCheckingAuth) return null;
+  // 🔹 NE RIEN AFFICHER tant que la vérification n'est pas terminée
+  if (isCheckingAuth) return (
+    <div className="w-full h-screen flex justify-center items-center">
+      <p>Vérification de la session...</p>
+    </div>
+  );
+
+  // 🔹 Si l'utilisateur n’est pas authentifié, rediriger vers login
+  if (!isAuthenticated) {
+    navigate("/login", { replace: true });
+    return null;
+  }
 
   return <Outlet />;
 }
