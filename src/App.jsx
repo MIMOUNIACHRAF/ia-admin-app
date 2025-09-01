@@ -1,11 +1,14 @@
 import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/routes";
+import AppInitializer from "./components/AppInitializer";
 
 function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <AppInitializer>
+        <AppRoutes />
+      </AppInitializer>
     </BrowserRouter>
   );
 }

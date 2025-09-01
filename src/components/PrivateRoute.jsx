@@ -3,14 +3,15 @@ import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
-import { setTokens } from "../features/auth/authSlice";
+import { setTokens, logout } from "../features/auth/authSlice";
 import { isRefreshTokenPresent } from "../utils/authUtils";
 
-export function PrivateRoute() {
+// --- Hook pour vérifier l'auth ---
+const useAuthCheck = () => {
   const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isTokenValid, setIsTokenValid] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
     const checkToken = async () => {
@@ -19,77 +20,50 @@ export function PrivateRoute() {
 
         if (token) {
           dispatch(setTokens({ access: token }));
-          setIsTokenValid(true);
+          setIsValid(true);
         } else {
           const refreshExists = await isRefreshTokenPresent();
           if (!refreshExists) {
             await authService.logout();
-            setIsTokenValid(false);
+            dispatch(logout());
+            setIsValid(false);
           } else {
             const newAccess = await authService.refreshAccessToken();
             if (newAccess) {
               dispatch(setTokens({ access: newAccess }));
-              setIsTokenValid(true);
+              setIsValid(true);
             } else {
               await authService.logout();
-              setIsTokenValid(false);
+              dispatch(logout());
+              setIsValid(false);
             }
           }
         }
       } catch {
         await authService.logout();
-        setIsTokenValid(false);
+        dispatch(logout());
+        setIsValid(false);
       } finally {
-        setIsCheckingAuth(false);
+        setIsChecking(false);
       }
     };
 
     checkToken();
   }, [accessToken, dispatch]);
 
-  if (isCheckingAuth) return <div>Loading...</div>;
-  return isTokenValid ? <Outlet /> : <Navigate to="/login" replace />;
+  return { isChecking, isValid };
+};
+
+// --- PrivateRoute : accès uniquement si authentifié ---
+export function PrivateRoute() {
+  const { isChecking, isValid } = useAuthCheck();
+  if (isChecking) return <div>Loading...</div>;
+  return isValid ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
-// --- PublicRoute : empêche accès à login si déjà connecté ---
+// --- PublicRoute : accès uniquement si non authentifié ---
 export function PublicRoute() {
-  const accessToken = useSelector(selectAccessToken);
-  const dispatch = useDispatch();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isTokenValid, setIsTokenValid] = useState(false);
-
-  useEffect(() => {
-    const checkToken = async () => {
-      try {
-        let token = accessToken || authService.getAccessToken();
-
-        if (token) {
-          dispatch(setTokens({ access: token }));
-          setIsTokenValid(true);
-        } else {
-          const refreshExists = await isRefreshTokenPresent();
-          if (!refreshExists) {
-            setIsTokenValid(false);
-          } else {
-            const newAccess = await authService.refreshAccessToken();
-            if (newAccess) {
-              dispatch(setTokens({ access: newAccess }));
-              setIsTokenValid(true);
-            } else {
-              setIsTokenValid(false);
-            }
-          }
-        }
-      } catch {
-        setIsTokenValid(false);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkToken();
-  }, [accessToken, dispatch]);
-
-  if (isCheckingAuth) return <div>Loading...</div>;
-  return isTokenValid ? <Navigate to="/" replace /> : <Outlet />;
+  const { isChecking, isValid } = useAuthCheck();
+  if (isChecking) return <div>Loading...</div>;
+  return isValid ? <Navigate to="/" replace /> : <Outlet />;
 }
