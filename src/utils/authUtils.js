@@ -6,7 +6,7 @@ import authService from '../services/authService';
  */
 export function isRefreshTokenPresent() {
   // ⚡ Affiche tous les cookies pour debug
-  console.log("Cookies actuels 123:", document.cookie);
+  console.log("Cookies actuels xxx:", document.cookie);
 
   // Vérifie si le cookie refresh_token est présent
   const cookieExists = document.cookie
