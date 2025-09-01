@@ -22,7 +22,6 @@ const authService = {
 
   // --- Refresh token côté frontend (document.cookie) ---
   setRefreshToken: (token) => {
-    // 🔹 Cookie sécurisé côté frontend
     document.cookie = `refresh_token=${token}; path=/; samesite=strict; secure`;
   },
 
@@ -30,6 +29,7 @@ const authService = {
     document.cookie = 'refresh_token=; path=/; max-age=0';
   },
 
+  // --- Skip auto refresh ---
   setSkipAutoRefresh: (value) => { skipAutoRefresh = value; },
 
   // --- Login ---
@@ -81,6 +81,23 @@ const authService = {
     }
   },
 
+  // --- Vérifier si refresh token existe ---
+  isRefreshTokenPresent: () => {
+    return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
+  },
+
+  // --- Vérifier validité du refresh token ---
+  checkRefreshToken: async () => {
+    if (!authService.isRefreshTokenPresent()) return false;
+
+    try {
+      const newAccess = await authService.refreshAccessToken();
+      return !!newAccess;
+    } catch {
+      return false;
+    }
+  },
+
   // --- Initialize auth après reload ---
   initializeAuth: async () => {
     if (accessTokenMemory) return { access: accessTokenMemory };
@@ -91,15 +108,13 @@ const authService = {
       return { access };
     }
 
-    // Vérifier si refresh token existe dans cookie
-    const refreshExists = await isRefreshTokenPresent();
-    if (!refreshExists) {
+    const refreshValid = await authService.checkRefreshToken();
+    if (!refreshValid) {
       await authService.logout();
       return null;
     }
 
-    // Sinon, tenter refresh
-    const newAccess = await authService.refreshAccessToken();
+    const newAccess = authService.getAccessToken();
     return newAccess ? { access: newAccess } : null;
   },
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens, logout } from "../features/auth/authSlice";
-import { isRefreshTokenPresent } from "../utils/authUtils";
 
 // --- Hook pour vérifier l'auth ---
 const useAuthCheck = () => {
@@ -22,21 +21,16 @@ const useAuthCheck = () => {
           dispatch(setTokens({ access: token }));
           setIsValid(true);
         } else {
-          const refreshExists = await isRefreshTokenPresent();
-          if (!refreshExists) {
+          // ✅ Vérifie si refresh token est valide
+          const refreshValid = await authService.checkRefreshToken();
+          if (refreshValid) {
+            const newAccess = authService.getAccessToken();
+            dispatch(setTokens({ access: newAccess }));
+            setIsValid(true);
+          } else {
             await authService.logout();
             dispatch(logout());
             setIsValid(false);
-          } else {
-            const newAccess = await authService.refreshAccessToken();
-            if (newAccess) {
-              dispatch(setTokens({ access: newAccess }));
-              setIsValid(true);
-            } else {
-              await authService.logout();
-              dispatch(logout());
-              setIsValid(false);
-            }
           }
         }
       } catch {
