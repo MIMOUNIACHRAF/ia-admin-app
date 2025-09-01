@@ -19,6 +19,7 @@ export function isRefreshTokenPresent() {
   }
 
   console.log("Refresh token présent ?", cookieExists);
+  console.log("Refresh token présent !", document.cookie);
 
 
   return cookieExists;
