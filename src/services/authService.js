@@ -70,7 +70,11 @@ const authService = {
       .find(c => c.startsWith('refresh_token='))
       ?.split('=')[1];
 
-    if (!refreshToken) return null;
+    if (!refreshToken) {
+      // 🔥 Pas de refresh token → logout immédiat
+      await authService.logout();
+      return null;
+    }
 
     try {
       const response = await api.post(
@@ -89,8 +93,7 @@ const authService = {
 
       return access;
     } catch (err) {
-      authService.clearAccessToken();
-      authService.clearRefreshToken();
+      await authService.logout();
       return null;
     }
   },
@@ -100,9 +103,12 @@ const authService = {
     return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
   },
 
-  // --- Vérifier validité du refresh token ---
+  // --- Check refresh token et logout si absent ---
   checkRefreshToken: async () => {
-    if (!authService.isRefreshTokenPresent()) return false;
+    if (!authService.isRefreshTokenPresent()) {
+      await authService.logout();
+      return false;
+    }
     const newAccess = await authService.refreshAccessToken();
     return !!newAccess;
   },
@@ -117,17 +123,8 @@ const authService = {
       return { access };
     }
 
-    if (!authService.isRefreshTokenPresent()) {
-      // 🔥 Pas de refresh token → logout automatique
-      await authService.logout();
-      return null;
-    }
-
-    const refreshValid = await authService.checkRefreshToken();
-    if (!refreshValid) {
-      await authService.logout();
-      return null;
-    }
+    const valid = await authService.checkRefreshToken();
+    if (!valid) return null;
 
     const newAccess = authService.getAccessToken();
     return newAccess ? { access: newAccess } : null;
