@@ -71,6 +71,7 @@ const authService = {
         .find(c => c.startsWith('refresh_token='))
         ?.split('=')[1];
       console.log("Refresh token envoyé :", refreshToken);
+      console.log("Refresh token envoyé :", document.cookie);
       if (!refreshToken) {
         authService.clearAccessToken();
         authService.clearRefreshToken();
