@@ -22,7 +22,7 @@ const authService = {
 
   // --- Refresh token côté frontend (document.cookie) ---
   setRefreshToken: (token) => {
-    document.cookie = `refresh_token=${token}; path=/; samesite=strict; secure`;
+    document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
   },
 
   clearRefreshToken: () => {
