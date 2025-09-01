@@ -83,7 +83,7 @@ const authService = {
 
   // --- Vérifier si refresh token existe ---
   isRefreshTokenPresent: () => {
-    console.log("Cookies actuels :", document.cookie);
+    console.log("Cookies actuels papaza:", document.cookie);
     return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
   },
 
