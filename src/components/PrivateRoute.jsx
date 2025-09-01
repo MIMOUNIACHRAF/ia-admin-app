@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { selectAccessToken } from "../features/auth/authSelectors";
@@ -10,47 +10,50 @@ export default function PrivateRoute() {
   const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [isTokenValid, setIsTokenValid] = useState(false);
-  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const checkToken = async () => {
+    const checkAuth = async () => {
       try {
         console.log("Cookies actuels :", document.cookie);
 
-        const refreshExists = await isRefreshTokenPresent();
-        if (!refreshExists) {
-          console.warn("Refresh token absent. Déconnexion forcée.");
-          await authService.logout();
-          setShouldRedirect(true); // 🔹 déclenche la redirection
-          return;
-        }
-
         let token = accessToken || authService.getAccessToken();
+
         if (token) {
           dispatch(setTokens({ access: token }));
-          setIsTokenValid(true);
         } else {
-          const newAccess = await authService.refreshAccessToken();
-          if (newAccess) {
-            dispatch(setTokens({ access: newAccess }));
-            setIsTokenValid(true);
-          } else {
+          const refreshExists = await isRefreshTokenPresent();
+
+          if (!refreshExists) {
+            console.log("Refresh token absent. Déconnexion forcée.");
             await authService.logout();
-            setShouldRedirect(true);
+            navigate("/login", { replace: true });
+            return;
           }
+
+          // tenter de refresh si refresh token existe
+          const newAccess = await authService.refreshAccessToken();
+          if (!newAccess) {
+            await authService.logout();
+            navigate("/login", { replace: true });
+            return;
+          }
+          dispatch(setTokens({ access: newAccess }));
         }
       } catch (err) {
         console.error("Erreur auth:", err);
         await authService.logout();
-        setShouldRedirect(true);
+        navigate("/login", { replace: true });
+        return;
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
 
-    checkToken();
-  }, [accessToken, dispatch]);
+    checkAuth();
+  }, [accessToken, dispatch, navigate]);
 
-  if (shouldRedirect) return <Navigate to="/login/" replace />;
+  if (isCheckingAuth) return null; // ⚡ loader caché ou spinner si tu veux
 
-  return isTokenValid ? <Outlet /> : null;
+  return <Outlet />;
 }
