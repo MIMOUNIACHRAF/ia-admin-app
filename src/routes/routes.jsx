@@ -11,7 +11,10 @@ import PrivateRoute from "../components/PrivateRoute";
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* page login accessible toujours */}
       <Route path="/login" element={<Login />} />
+
+      {/* routes privées */}
       <Route element={<PrivateRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/" element={<Home />} />
@@ -21,8 +24,9 @@ export default function AppRoutes() {
           <Route path="/logs" element={<Logs />} />
         </Route>
       </Route>
-      {/* rediriger tout ce qui ne matche pas vers home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+
+      {/* redirection automatique : si utilisateur arrive sur / ou n’importe quelle route non définie */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
