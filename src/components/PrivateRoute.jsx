@@ -17,33 +17,36 @@ export default function PrivateRoute() {
       try {
         console.log("Cookies actuels :", document.cookie);
 
+        // Vérifier access token en mémoire ou localStorage
         let token = accessToken || authService.getAccessToken();
 
         if (token) {
           dispatch(setTokens({ access: token }));
         } else {
+          // Vérifier refresh token dans cookie
           const refreshExists = await isRefreshTokenPresent();
 
           if (!refreshExists) {
             console.log("Refresh token absent. Déconnexion forcée.");
             await authService.logout();
-            navigate("/login", { replace: true });
+            navigate("/login", { replace: true }); // ← redirection immédiate
             return;
           }
 
-          // tenter de refresh si refresh token existe
+          // Tenter de refresh access token si refresh token présent
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) {
             await authService.logout();
-            navigate("/login", { replace: true });
+            navigate("/login", { replace: true }); // ← redirection immédiate
             return;
           }
+
           dispatch(setTokens({ access: newAccess }));
         }
       } catch (err) {
         console.error("Erreur auth:", err);
         await authService.logout();
-        navigate("/login", { replace: true });
+        navigate("/login", { replace: true }); // ← redirection immédiate
         return;
       } finally {
         setIsCheckingAuth(false);
@@ -53,7 +56,8 @@ export default function PrivateRoute() {
     checkAuth();
   }, [accessToken, dispatch, navigate]);
 
-  if (isCheckingAuth) return null; // ⚡ loader caché ou spinner si tu veux
+  // ⚡ Tant que l'auth est en cours de vérification, rien n'est rendu
+  if (isCheckingAuth) return null;
 
   return <Outlet />;
 }
