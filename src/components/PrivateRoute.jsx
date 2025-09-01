@@ -5,7 +5,7 @@ import { selectIsAuthenticated, selectAccessToken } from "../features/auth/authS
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
 import { isRefreshTokenPresent } from "../utils/authUtils"; 
-// fonction que tu as ajoutée ok
+
 export default function PrivateRoute() {
   const isAuthenticated_ = useSelector(selectIsAuthenticated);
   const accessToken = useSelector(selectAccessToken);
@@ -17,6 +17,9 @@ export default function PrivateRoute() {
   useEffect(() => {
     const checkToken = async () => {
       try {
+        // ⚡ Affichage du cookie complet pour debug
+        console.log("Cookies actuels :", document.cookie);
+
         // Vérifier access token
         let token = accessToken || authService.getAccessToken();
 
@@ -62,7 +65,7 @@ export default function PrivateRoute() {
     }
   }, [isCheckingAuth, isTokenValid, navigate]);
 
-  if (isCheckingAuth) return <div>Loading...</div>;
+  if (isCheckingAuth) return null; // ⚡ Plus de “Loading…”
 
   return isTokenValid ? <Outlet /> : null;
 }
