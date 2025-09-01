@@ -64,7 +64,30 @@ const authService = {
     if (skipAutoRefresh) return null;
 
     try {
-      const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, { withCredentials: true });
+      // Récupérer le refresh token depuis document.cookie
+      const refreshToken = document.cookie
+        .split(';')
+        .map(c => c.trim())
+        .find(c => c.startsWith('refresh_token='))
+        ?.split('=')[1];
+
+      if (!refreshToken) {
+        authService.clearAccessToken();
+        authService.clearRefreshToken();
+        return null;
+      }
+
+      const response = await api.post(
+        API_ENDPOINTS.REFRESH_TOKEN,
+        {}, // body vide
+        {
+          withCredentials: true,
+          headers: {
+            'X-Refresh-Token': refreshToken, // ⚡ envoyer dans le header
+          },
+        }
+      );
+
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
 
@@ -79,7 +102,7 @@ const authService = {
       authService.clearRefreshToken();
       return null;
     }
-  },
+},
 
   // --- Vérifier si refresh token existe ---
   isRefreshTokenPresent: () => {
