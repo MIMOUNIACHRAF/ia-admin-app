@@ -72,7 +72,7 @@ const authService = {
         ?.split('=')[1];
 
       console.log("Refresh token envoyé :", refreshToken);
-      console.log("Cookies actuels :", document.cookie);
+      console.log("Cookies actuels 123:", document.cookie);
 
       if (!refreshToken) {
         authService.clearAccessToken();
