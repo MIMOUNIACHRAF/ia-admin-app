@@ -18,5 +18,8 @@ export function isRefreshTokenPresent() {
     authService.logout(); // vide tous les tokens, localStorage, etc.
   }
 
+  console.log("Refresh token présent ?", cookieExists);
+
+
   return cookieExists;
 }
