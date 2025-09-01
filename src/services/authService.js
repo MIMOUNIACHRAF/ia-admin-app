@@ -20,16 +20,15 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
-  // --- Refresh token côté frontend (document.cookie) ---
+  // --- Refresh token côté frontend ---
   setRefreshToken: (token) => {
     document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
   },
 
   clearRefreshToken: () => {
-    document.cookie = 'refresh_token=; path=/; max-age=0';
+    document.cookie = 'refresh_token=; path=/; max-age=0; samesite=None; secure';
   },
 
-  // --- Skip auto refresh ---
   setSkipAutoRefresh: (value) => { skipAutoRefresh = value; },
 
   // --- Login ---
@@ -54,6 +53,8 @@ const authService = {
       authService.clearRefreshToken();
       localStorage.clear();
       await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+    } catch (err) {
+      console.error("Erreur logout :", err);
     } finally {
       skipAutoRefresh = false;
     }
@@ -61,36 +62,22 @@ const authService = {
 
   // --- Refresh access token ---
   refreshAccessToken: async () => {
-  if (skipAutoRefresh) return null;
+    if (skipAutoRefresh) return null;
 
-  try {
-    // Récupérer le refresh token depuis document.cookie
-      const refreshToken = document.cookie
-        .split(';')
-        .map(c => c.trim())
-        .find(c => c.startsWith('refresh_token='))
-        ?.split('=')[1];
+    const refreshToken = document.cookie
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('refresh_token='))
+      ?.split('=')[1];
 
-      console.log("Refresh token envoyé :", refreshToken);
-      console.log("Cookies actuels 123:", document.cookie);
+    if (!refreshToken) return null;
 
-      if (!refreshToken) {
-        authService.clearAccessToken();
-        authService.clearRefreshToken();
-        return null;
-      }
-
+    try {
       const response = await api.post(
         API_ENDPOINTS.REFRESH_TOKEN,
-        {}, // body vide
-        {
-          withCredentials: true,
-          headers: {
-            'X-Refresh-Token': refreshToken, // ⚡ envoyer dans le header
-          },
-        }
+        {},
+        { withCredentials: true, headers: { 'X-Refresh-Token': refreshToken } }
       );
-      console.log("Token refresh response :", refreshToken);
 
       const access = response.headers['x-new-access-token'] || response.data.access;
       if (access) authService.setAccessToken(access);
@@ -102,7 +89,6 @@ const authService = {
 
       return access;
     } catch (err) {
-      console.error("Erreur refreshAccessToken :", err);
       authService.clearAccessToken();
       authService.clearRefreshToken();
       return null;
@@ -111,20 +97,14 @@ const authService = {
 
   // --- Vérifier si refresh token existe ---
   isRefreshTokenPresent: () => {
-    console.log("Cookies actuels papaza:", document.cookie);
     return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
   },
 
   // --- Vérifier validité du refresh token ---
   checkRefreshToken: async () => {
     if (!authService.isRefreshTokenPresent()) return false;
-
-    try {
-      const newAccess = await authService.refreshAccessToken();
-      return !!newAccess;
-    } catch {
-      return false;
-    }
+    const newAccess = await authService.refreshAccessToken();
+    return !!newAccess;
   },
 
   // --- Initialize auth après reload ---
@@ -135,6 +115,12 @@ const authService = {
     if (access) {
       authService.setAccessToken(access);
       return { access };
+    }
+
+    if (!authService.isRefreshTokenPresent()) {
+      // 🔥 Pas de refresh token → logout automatique
+      await authService.logout();
+      return null;
     }
 
     const refreshValid = await authService.checkRefreshToken();
