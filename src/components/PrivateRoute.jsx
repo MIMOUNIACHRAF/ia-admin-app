@@ -1,67 +1,65 @@
-import { Outlet, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useState } from "react";
-import { selectAccessToken, selectIsAuthenticated } from "../features/auth/authSelectors";
+import { selectIsAuthenticated, selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
-import { isRefreshTokenPresent } from "../utils/authUtils";
+import { isRefreshTokenPresent } from "../utils/authUtils"; // fonction que tu as ajoutée
 
 export default function PrivateRoute() {
-  const accessToken = useSelector(selectAccessToken);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isTokenValid, setIsTokenValid] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkToken = async () => {
       try {
+        // Vérifier access token
         let token = accessToken || authService.getAccessToken();
 
         if (token) {
           dispatch(setTokens({ access: token }));
+          setIsTokenValid(true);
         } else {
+          // Si pas de token, vérifier refresh token
           const refreshExists = await isRefreshTokenPresent();
-
           if (!refreshExists) {
+            // Logout direct si refresh token absent
             await authService.logout();
-            navigate("/login", { replace: true });
-            return;
+            setIsTokenValid(false);
+          } else {
+            // Sinon, tenter de refresh l'access token
+            const newAccess = await authService.refreshAccessToken();
+            if (newAccess) {
+              dispatch(setTokens({ access: newAccess }));
+              setIsTokenValid(true);
+            } else {
+              await authService.logout();
+              setIsTokenValid(false);
+            }
           }
-
-          const newAccess = await authService.refreshAccessToken();
-          if (!newAccess) {
-            await authService.logout();
-            navigate("/login", { replace: true });
-            return;
-          }
-
-          dispatch(setTokens({ access: newAccess }));
         }
+
+        setIsCheckingAuth(false);
       } catch (err) {
+        console.error("Erreur auth:", err);
         await authService.logout();
-        navigate("/login", { replace: true });
-      } finally {
+        setIsTokenValid(false);
         setIsCheckingAuth(false);
       }
     };
 
-    checkAuth();
-  }, [accessToken, dispatch, navigate]);
+    checkToken();
+  }, [accessToken, dispatch]);
 
-  // 🔹 NE RIEN AFFICHER tant que la vérification n'est pas terminée
-  if (isCheckingAuth) return (
-    <div className="w-full h-screen flex justify-center items-center">
-      <p>Vérification de la session...</p>
-    </div>
-  );
+  // Redirection automatique si pas de token
+  useEffect(() => {
+    if (!isCheckingAuth && !isTokenValid) {
+      navigate('/login', { replace: true });
+    }
+  }, [isCheckingAuth, isTokenValid, navigate]);
 
-  // 🔹 Si l'utilisateur n’est pas authentifié, rediriger vers login
-  if (!isAuthenticated) {
-    navigate("/login", { replace: true });
-    return null;
-  }
+  if (isCheckingAuth) return <div>Loading...</div>;
 
-  return <Outlet />;
-  //ok
+  return isTokenValid ? <Outlet /> : null;
 }
