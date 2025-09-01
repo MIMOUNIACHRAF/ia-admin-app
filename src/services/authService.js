@@ -61,17 +61,19 @@ const authService = {
 
   // --- Refresh access token ---
   refreshAccessToken: async () => {
-    if (skipAutoRefresh) return null;
+  if (skipAutoRefresh) return null;
 
-    try {
-      // Récupérer le refresh token depuis document.cookie
+  try {
+    // Récupérer le refresh token depuis document.cookie
       const refreshToken = document.cookie
         .split(';')
         .map(c => c.trim())
         .find(c => c.startsWith('refresh_token='))
         ?.split('=')[1];
+
       console.log("Refresh token envoyé :", refreshToken);
-      console.log("Refresh token envoyé :", document.cookie);
+      console.log("Cookies actuels :", document.cookie);
+
       if (!refreshToken) {
         authService.clearAccessToken();
         authService.clearRefreshToken();
@@ -98,12 +100,13 @@ const authService = {
       }
 
       return access;
-    } catch {
+    } catch (err) {
+      console.error("Erreur refreshAccessToken :", err);
       authService.clearAccessToken();
       authService.clearRefreshToken();
       return null;
     }
-},
+  },
 
   // --- Vérifier si refresh token existe ---
   isRefreshTokenPresent: () => {
