@@ -1,6 +1,5 @@
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
-import { isRefreshTokenPresent } from '../utils/authUtils'; // chemin vers ton fichier avec la fonction
 
 let accessTokenMemory = null;
 let skipAutoRefresh = false;
@@ -21,9 +20,10 @@ const authService = {
     delete api.defaults.headers.common['Authorization'];
   },
 
-  // --- Refresh token côté cookie HttpOnly ---
+  // --- Refresh token côté frontend (document.cookie) ---
   setRefreshToken: (token) => {
-    document.cookie = `refresh_token=${token}; path=/; samesite=strict`;
+    // 🔹 Cookie sécurisé côté frontend
+    document.cookie = `refresh_token=${token}; path=/; samesite=strict; secure`;
   },
 
   clearRefreshToken: () => {
@@ -91,7 +91,7 @@ const authService = {
       return { access };
     }
 
-    // Vérifier si refresh token existe (cookie ou backend)
+    // Vérifier si refresh token existe dans cookie
     const refreshExists = await isRefreshTokenPresent();
     if (!refreshExists) {
       await authService.logout();

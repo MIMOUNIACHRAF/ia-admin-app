@@ -1,71 +1,58 @@
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
-import { selectIsAuthenticated, selectAccessToken } from "../features/auth/authSelectors";
+import { selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
-import { isRefreshTokenPresent } from "../utils/authUtils"; 
+import { isRefreshTokenPresent } from "../utils/authUtils";
 
 export default function PrivateRoute() {
-  const isAuthenticated_ = useSelector(selectIsAuthenticated);
   const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isTokenValid, setIsTokenValid] = useState(false);
 
   useEffect(() => {
     const checkToken = async () => {
       try {
-        // ⚡ Affichage du cookie complet pour debug
+        // 🔹 Affichage du cookie complet pour debug
         console.log("Cookies actuels :", document.cookie);
+
+        // Vérifier refresh token côté frontend
+        const refreshExists = await isRefreshTokenPresent();
+        if (!refreshExists) {
+          // ❌ Pas de refresh token → session terminée
+          await authService.logout();
+          setIsTokenValid(false);
+          navigate("/login", { replace: true });
+          return;
+        }
 
         // Vérifier access token
         let token = accessToken || authService.getAccessToken();
-
         if (token) {
           dispatch(setTokens({ access: token }));
           setIsTokenValid(true);
         } else {
-          // Si pas de token, vérifier refresh token
-          const refreshExists = await isRefreshTokenPresent();
-          if (!refreshExists) {
-            // Logout direct si refresh token absent
-            await authService.logout();
-            setIsTokenValid(false);
+          // 🔄 Tenter refresh via backend
+          const newAccess = await authService.refreshAccessToken();
+          if (newAccess) {
+            dispatch(setTokens({ access: newAccess }));
+            setIsTokenValid(true);
           } else {
-            // Sinon, tenter de refresh l'access token
-            const newAccess = await authService.refreshAccessToken();
-            if (newAccess) {
-              dispatch(setTokens({ access: newAccess }));
-              setIsTokenValid(true);
-            } else {
-              await authService.logout();
-              setIsTokenValid(false);
-            }
+            await authService.logout();
+            navigate("/login", { replace: true });
           }
         }
-
-        setIsCheckingAuth(false);
       } catch (err) {
         console.error("Erreur auth:", err);
         await authService.logout();
-        setIsTokenValid(false);
-        setIsCheckingAuth(false);
+        navigate("/login", { replace: true });
       }
     };
 
     checkToken();
-  }, [accessToken, dispatch]);
-
-  // Redirection automatique si pas de token
-  useEffect(() => {
-    if (!isCheckingAuth && !isTokenValid) {
-      navigate('/login', { replace: true });
-    }
-  }, [isCheckingAuth, isTokenValid, navigate]);
-
-  if (isCheckingAuth) return null; // ⚡ Plus de “Loading…”
+  }, [accessToken, dispatch, navigate]);
 
   return isTokenValid ? <Outlet /> : null;
 }

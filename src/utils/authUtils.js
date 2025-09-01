@@ -1,22 +1,22 @@
-import api from '../api/axiosInstance';
+import authService from '../services/authService';
 
 /**
- * Vérifie si le refresh token existe
- * @returns {Promise<boolean>} true si le refresh token existe ou est valide, false sinon
+ * Vérifie si le refresh token existe dans document.cookie
+ * @returns {boolean} true si le refresh token existe, false sinon
  */
-export async function isRefreshTokenPresent() {
-  // Vérifier si le cookie est présent (si non HttpOnly)
+export function isRefreshTokenPresent() {
+  // ⚡ Affiche tous les cookies pour debug
+  console.log("Cookies actuels :", document.cookie);
+
+  // Vérifie si le cookie refresh_token est présent
   const cookieExists = document.cookie
     .split(';')
     .some(c => c.trim().startsWith('refresh_token='));
 
-  if (cookieExists) return true;
-
-  // Si cookie HttpOnly ou supprimé, tester via backend
-  try {
-    await api.post('/auth/refresh', {}, { withCredentials: true });
-    return true;
-  } catch {
-    return false;
+  if (!cookieExists) {
+    console.warn("Refresh token absent. Déconnexion forcée.");
+    authService.logout(); // vide tous les tokens, localStorage, etc.
   }
+
+  return cookieExists;
 }
