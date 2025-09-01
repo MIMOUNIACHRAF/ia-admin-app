@@ -70,7 +70,7 @@ const authService = {
         .map(c => c.trim())
         .find(c => c.startsWith('refresh_token='))
         ?.split('=')[1];
-
+      console.log("Refresh token envoyé :", refreshToken);
       if (!refreshToken) {
         authService.clearAccessToken();
         authService.clearRefreshToken();
