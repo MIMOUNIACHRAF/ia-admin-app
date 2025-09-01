@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { login, logout, refreshToken, fetchUserData } from './authThunks';
+import { login, logout as logoutThunk, refreshToken, fetchUserData } from './authThunks';
 import authService from '../../services/authService';
 
 const initialState = {
@@ -27,6 +27,11 @@ const authSlice = createSlice({
         state.status.isAuthenticated = false;
       }
     },
+    // ✅ Logout simple utilisable directement
+    logout: () => {
+      authService.clearAccessToken();
+      return initialState;
+    },
   },
   extraReducers: (builder) => {
     // --- LOGIN ---
@@ -52,8 +57,8 @@ const authSlice = createSlice({
       state.status.isAuthenticated = false;
     });
 
-    // --- LOGOUT ---
-    builder.addCase(logout.fulfilled, () => {
+    // --- LOGOUT (Thunk) ---
+    builder.addCase(logoutThunk.fulfilled, () => {
       authService.clearAccessToken();
       return initialState;
     });
@@ -87,5 +92,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setTokens } = authSlice.actions;
+// ✅ Exporter le logout du reducer pour l'utiliser dans AppInitializer
+export const { clearError, setTokens, logout } = authSlice.actions;
 export default authSlice.reducer;

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import authService from "../services/authService";
-import { setTokens, logout } from "../features/auth/authSlice";
-import { isRefreshTokenPresent } from "../utils/authUtils";
+import authService from "./services/authService";
+import { setTokens, logout } from "./features/auth/authSlice";
+import { isRefreshTokenPresent } from "./utils/authUtils";
 
 export default function AppInitializer({ children }) {
   const dispatch = useDispatch();

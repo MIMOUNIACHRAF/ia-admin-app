@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/routes";
-import AppInitializer from "./components/AppInitializer";
+import AppInitializer from "./AppInitializer";
 
 function App() {
   return (
