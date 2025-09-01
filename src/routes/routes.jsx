@@ -7,12 +7,19 @@ import Login from "../pages/Login";
 import AdminLayout from "../layouts/AdminLayout";
 import Home from "../pages/Home";
 import PrivateRoute from "../components/PrivateRoute";
+import { useSelector } from "react-redux";
+import { selectIsAuthenticated } from "../features/auth/authSelectors";
 
 export default function AppRoutes() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+
   return (
     <Routes>
-      {/* page login accessible toujours */}
-      <Route path="/login" element={<Login />} />
+      {/* page login : si déjà connecté, redirige vers / */}
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+      />
 
       {/* routes privées */}
       <Route element={<PrivateRoute />}>
@@ -25,8 +32,8 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* redirection automatique : si utilisateur arrive sur / ou n’importe quelle route non définie */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* redirection automatique pour routes inconnues */}
+      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />
     </Routes>
   );
 }
