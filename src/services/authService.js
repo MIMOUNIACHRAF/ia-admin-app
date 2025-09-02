@@ -75,7 +75,7 @@ const authService = {
       await authService.logout();
       return null;
     }
-
+    console.log('Refreshing access token...',refreshToken);
     try {
       const response = await api.post(
         API_ENDPOINTS.REFRESH_TOKEN,
