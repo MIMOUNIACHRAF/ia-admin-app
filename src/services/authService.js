@@ -1,15 +1,22 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
+import { useLocation, useNavigate } from "react-router-dom";
 import authService from "../services/authService";
 import { setTokens } from "../features/auth/authSlice";
-import { useNavigate } from "react-router-dom";
 
 export default function AppInitializer({ children }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const hasChecked = useRef(false);
 
   useEffect(() => {
+    // ⚡️ Ne rien faire au premier rendu si on est déjà sur /login
+    if (!hasChecked.current && location.pathname === "/login") {
+      hasChecked.current = true;
+      return;
+    }
+
     if (hasChecked.current) return;
     hasChecked.current = true;
 
@@ -20,19 +27,18 @@ export default function AppInitializer({ children }) {
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      // CAS 1 : access + refresh → OK, rien à faire
+      // CAS 1 : access + refresh → OK
       if (access && refreshExists) {
         dispatch(setTokens({ access }));
         return;
       }
 
-      // CAS 2 : access absent, refresh présent → refresh token
+      // CAS 2 : access absent, refresh présent → tenter refresh
       if (!access && refreshExists) {
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
           dispatch(setTokens({ access: newAccess }));
         } else {
-          // refresh token invalide → suppression locale
           authService.clearAccessToken();
           authService.clearRefreshToken();
           navigate("/login", { replace: true });
@@ -40,15 +46,14 @@ export default function AppInitializer({ children }) {
         return;
       }
 
-      // CAS 3 : refresh absent → première visite ou session expirée
-      // on ne fait pas de logout API car pas de token
+      // CAS 3 : refresh absent → session expirée ou première visite
       authService.clearAccessToken();
       authService.clearRefreshToken();
       navigate("/login", { replace: true });
     };
 
     initAuth();
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, location.pathname]);
 
   return children;
 }
