@@ -1,3 +1,4 @@
+// AppInitializer.jsx
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import authService from "./services/authService";
@@ -15,36 +16,28 @@ export default function AppInitializer({ children }) {
       const access = authService.getAccessToken();
       const refreshExists = authService.isRefreshTokenPresent();
 
-      console.log("Cookies actuels:", document.cookie);
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      if (access) {
-        console.log("✅ Access token déjà présent, pas de refresh immédiat");
+      // CAS 1 : access + refresh → OK
+      if (access && refreshExists) {
         dispatch(setTokens({ access }));
         return;
       }
 
-      if (!refreshExists) {
-        console.log("❌ Pas de refresh token → logout immédiat");
-        await authService.logout({ silent: true });
+      // CAS 2 : access absent, refresh présent → refresh
+      if (!access && refreshExists) {
+        const newAccess = await authService.refreshAccessToken();
+        if (newAccess) {
+          dispatch(setTokens({ access: newAccess }));
+        } else {
+          await authService.logout();
+        }
         return;
       }
 
-      // Tenter refresh access token
-      try {
-        const newAccess = await authService.refreshAccessToken();
-        if (newAccess) {
-          console.log("✅ Access token rafraîchi avec succès");
-          dispatch(setTokens({ access: newAccess }));
-        } else {
-          console.log("❌ Échec du refresh → logout");
-          await authService.logout({ silent: true });
-        }
-      } catch (err) {
-        console.log("❌ Erreur refresh → logout", err);
-        await authService.logout({ silent: true });
-      }
+      // CAS 3 & 4 : refresh absent → logout
+      await authService.logout();
     };
 
     initAuth();
