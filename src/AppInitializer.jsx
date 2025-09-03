@@ -39,8 +39,9 @@ export default function AppInitializer({ children }) {
       }
 
       // CAS 3 & 4 : refresh absent → logout immédiat
-      await dispatch(logout());
+      
       navigate("/login", { replace: true });
+      await dispatch(logout());
     };
 
     initAuth();
