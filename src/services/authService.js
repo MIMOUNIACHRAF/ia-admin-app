@@ -22,8 +22,8 @@ const authService = {
 
   // --- Refresh Token ---
   setRefreshToken: (token) => {
-    // Cookie accessible côté JS, persistant sur le même domaine
-    document.cookie = `refresh_token=${token}; path=/`;
+    // Cookie persistant, accessible JS, même domaine
+    document.cookie = `refresh_token=${token}; path=/; max-age=${7*24*60*60}`; // 7 jours
   },
 
   clearRefreshToken: () => {
@@ -71,7 +71,7 @@ const authService = {
       localStorage.clear();
 
       if (refreshExists) {
-        await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+        await api.post(API_ENDPOINTS.LOGOUT, {}, { headers: { "X-Refresh-Token": authService.getRefreshToken() } });
       }
     } catch (err) {
       console.error("Erreur logout :", err.response?.data || err.message);
@@ -109,6 +109,7 @@ const authService = {
     } catch (err) {
       console.error("Erreur refresh :", err.response?.data || err.message);
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       return null;
     }
   },
