@@ -12,28 +12,39 @@ export default function AppInitializer({ children }) {
     hasChecked.current = true;
 
     const initAuth = async () => {
-      // 1️⃣ Vérifier si access déjà présent en mémoire/localStorage
       const access = authService.getAccessToken();
+      const refreshExists = authService.isRefreshTokenPresent();
+
+      console.log("Cookies actuels:", document.cookie);
+      console.log("Access token présent ?", !!access);
+      console.log("Refresh token présent ?", refreshExists);
+
       if (access) {
-        console.log("✅ Access token déjà présent, pas de refresh");
+        // 🔹 Si access token dispo → on le garde
+        console.log("✅ Access token déjà présent, pas de refresh immédiat");
         dispatch(setTokens({ access }));
         return;
       }
 
-      // 2️⃣ Vérifier si refresh token présent
-      if (!authService.isRefreshTokenPresent()) {
-        console.log("❌ Pas de refresh token → logout");
+      // 🔹 Si pas d'access → on regarde le refresh
+      if (!refreshExists) {
+        console.log("❌ Pas de refresh token → logout immédiat");
         await authService.logout();
         return;
       }
 
-      // 3️⃣ Essayer de rafraîchir l'access token
-      const newAccess = await authService.refreshAccessToken();
-      if (newAccess) {
-        console.log("🔄 Access token rafraîchi avec succès");
-        dispatch(setTokens({ access: newAccess }));
-      } else {
-        console.log("❌ Échec du refresh → logout");
+      // 🔹 Sinon → tenter le refresh
+      try {
+        const newAccess = await authService.refreshAccessToken();
+        if (newAccess) {
+          console.log("✅ Access token rafraîchi avec succès");
+          dispatch(setTokens({ access: newAccess }));
+        } else {
+          console.log("❌ Échec du refresh → logout");
+          await authService.logout();
+        }
+      } catch (err) {
+        console.log("❌ Erreur refresh → logout", err);
         await authService.logout();
       }
     };
