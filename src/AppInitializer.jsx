@@ -20,20 +20,18 @@ export default function AppInitializer({ children }) {
       console.log("Refresh token présent ?", refreshExists);
 
       if (access) {
-        // 🔹 Si access token dispo → on le garde
         console.log("✅ Access token déjà présent, pas de refresh immédiat");
         dispatch(setTokens({ access }));
         return;
       }
 
-      // 🔹 Si pas d'access → on regarde le refresh
       if (!refreshExists) {
         console.log("❌ Pas de refresh token → logout immédiat");
-        await authService.logout();
+        await authService.logout({ silent: true });
         return;
       }
 
-      // 🔹 Sinon → tenter le refresh
+      // Tenter refresh access token
       try {
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
@@ -41,11 +39,11 @@ export default function AppInitializer({ children }) {
           dispatch(setTokens({ access: newAccess }));
         } else {
           console.log("❌ Échec du refresh → logout");
-          await authService.logout();
+          await authService.logout({ silent: true });
         }
       } catch (err) {
         console.log("❌ Erreur refresh → logout", err);
-        await authService.logout();
+        await authService.logout({ silent: true });
       }
     };
 
