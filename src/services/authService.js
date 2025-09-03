@@ -56,16 +56,26 @@ const authService = {
   logout: async () => {
     try {
       skipAutoRefresh = true;
+
+      // Récupération du refresh token
+      const refreshExists = authService.isRefreshTokenPresent();
+
+      // On supprime toujours les tokens côté front
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
-      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+
+      // Appel API logout seulement si refresh token existait
+      if (refreshExists) {
+        await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+      }
     } catch (err) {
-      console.error("Erreur logout :", err);
+      console.error("Erreur logout :", err.response?.data || err.message);
     } finally {
       skipAutoRefresh = false;
     }
-  },
+},
+
 
   // --- Refresh access token ---
   refreshAccessToken: async () => {
