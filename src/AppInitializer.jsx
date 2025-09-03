@@ -20,29 +20,40 @@ export default function AppInitializer({ children }) {
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      // CAS 1 : access + refresh → OK
-      if (access && refreshExists) {
-        dispatch(setTokens({ access }));
+      // Si le refresh token est absent → supprimer tout et rediriger
+      if (!refreshExists) {
+        authService.clearAccessToken();
+        authService.clearRefreshToken();
+        localStorage.clear(); // suppression complète
+        navigate("/login", { replace: true });
         return;
       }
 
-      // CAS 2 : access absent, refresh présent → refresh token
+      // Si refresh existe mais access absent → tenter refresh
       if (!access && refreshExists) {
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
           dispatch(setTokens({ access: newAccess }));
         } else {
-          // Tokens invalides → vider et rediriger
+          // refresh invalide → vider et rediriger
           authService.clearAccessToken();
           authService.clearRefreshToken();
+          localStorage.clear();
           navigate("/login", { replace: true });
         }
         return;
       }
 
-      // CAS 3 & 4 : access absent ou refresh absent → vider et rediriger
+      // Si access et refresh existants → OK, on set le token
+      if (access && refreshExists) {
+        dispatch(setTokens({ access }));
+        return;
+      }
+
+      // Cas inattendu → vider et rediriger
       authService.clearAccessToken();
       authService.clearRefreshToken();
+      localStorage.clear();
       navigate("/login", { replace: true });
     };
 
