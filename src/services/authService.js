@@ -22,16 +22,23 @@ const authService = {
 
   // --- Refresh Token ---
   setRefreshToken: (token) => {
-    document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
+    // Cookie accessible côté JS, persistant sur le même domaine
+    document.cookie = `refresh_token=${token}; path=/`;
   },
 
   clearRefreshToken: () => {
-    document.cookie = 'refresh_token=; path=/; max-age=0; samesite=None; secure';
+    document.cookie = 'refresh_token=; path=/; max-age=0';
   },
 
-  isRefreshTokenPresent: () => {
-    return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
+  getRefreshToken: () => {
+    return document.cookie
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('refresh_token='))
+      ?.split('=')[1] || null;
   },
+
+  isRefreshTokenPresent: () => !!authService.getRefreshToken(),
 
   setSkipAutoRefresh: (value) => {
     skipAutoRefresh = value;
@@ -39,7 +46,7 @@ const authService = {
 
   // --- Login ---
   login: async (credentials) => {
-    const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
+    const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
 
     const access = response.headers['x-access-token'] || response.data.access;
     if (access) authService.setAccessToken(access);
@@ -57,15 +64,12 @@ const authService = {
     try {
       skipAutoRefresh = true;
 
-      // Récupération du refresh token
       const refreshExists = authService.isRefreshTokenPresent();
 
-      // On supprime toujours les tokens côté front
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
 
-      // Appel API logout seulement si refresh token existait
       if (refreshExists) {
         await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
       }
@@ -74,19 +78,13 @@ const authService = {
     } finally {
       skipAutoRefresh = false;
     }
-},
-
+  },
 
   // --- Refresh access token ---
   refreshAccessToken: async () => {
     if (skipAutoRefresh) return null;
 
-    const refreshToken = document.cookie
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('refresh_token='))
-      ?.split('=')[1];
-
+    const refreshToken = authService.getRefreshToken();
     if (!refreshToken) {
       authService.clearAccessToken();
       return null;
@@ -96,7 +94,7 @@ const authService = {
       const response = await api.post(
         API_ENDPOINTS.REFRESH_TOKEN,
         {},
-        { withCredentials: true, headers: { "X-Refresh-Token": refreshToken } }
+        { headers: { "X-Refresh-Token": refreshToken } }
       );
 
       const access = response.data.access || response.headers['x-new-access-token'];
@@ -117,13 +115,8 @@ const authService = {
 
   // --- Initialize auth après reload ---
   initializeAuth: async () => {
-    if (accessTokenMemory) return { access: accessTokenMemory };
-
-    const access = localStorage.getItem('access_token');
-    if (access) {
-      authService.setAccessToken(access);
-      return { access };
-    }
+    const access = authService.getAccessToken();
+    if (access) return { access };
 
     if (!authService.isRefreshTokenPresent()) return null;
 
@@ -133,7 +126,7 @@ const authService = {
 
   // --- Get user data ---
   getUserData: async () => {
-    const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
+    const response = await api.get(API_ENDPOINTS.USER);
     return response.data;
   },
 };
