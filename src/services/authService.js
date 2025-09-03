@@ -22,6 +22,7 @@ const authService = {
 
   // --- Refresh token côté frontend ---
   setRefreshToken: (token) => {
+    // 🔑 Stockage du refresh token dans cookie côté navigateur
     document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
   },
 
@@ -34,6 +35,7 @@ const authService = {
   // --- Login ---
   login: async (credentials) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
+
     const access = response.headers['x-access-token'] || response.data.access;
     if (access) authService.setAccessToken(access);
 
@@ -71,19 +73,22 @@ const authService = {
       ?.split('=')[1];
 
     if (!refreshToken) {
-      // 🔥 Pas de refresh token → logout immédiat
-      await authService.logout();
+      console.warn("Aucun refresh token trouvé → clear & stop");
+      authService.clearAccessToken();
       return null;
     }
-    console.log('Refreshing access token...',refreshToken);
+
+    console.log("Refreshing access token...");
+
     try {
+      // ✅ Envoi du refresh token dans les headers
       const response = await api.post(
         API_ENDPOINTS.REFRESH_TOKEN,
         {},
-        { withCredentials: true, headers: { 'X-Refresh-Token': refreshToken } }
+        { withCredentials: true, headers: { "X-Refresh-Token": refreshToken } }
       );
 
-      const access = response.headers['x-new-access-token'] || response.data.access;
+      const access = response.data.access || response.headers['x-new-access-token'];
       if (access) authService.setAccessToken(access);
 
       if (response.data?.refresh) {
@@ -93,7 +98,9 @@ const authService = {
 
       return access;
     } catch (err) {
-      await authService.logout();
+      console.error("Erreur refresh :", err.response?.data || err.message);
+      // ❌ Important : pas de logout() ici → sinon boucle infinie
+      authService.clearAccessToken();
       return null;
     }
   },
@@ -103,30 +110,26 @@ const authService = {
     return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
   },
 
-  // --- Check refresh token et logout si absent ---
-  checkRefreshToken: async () => {
-    if (!authService.isRefreshTokenPresent()) {
-      await authService.logout();
-      return false;
-    }
-    const newAccess = await authService.refreshAccessToken();
-    return !!newAccess;
-  },
-
   // --- Initialize auth après reload ---
   initializeAuth: async () => {
+    // 1. Vérifier en mémoire
     if (accessTokenMemory) return { access: accessTokenMemory };
 
+    // 2. Vérifier localStorage
     const access = localStorage.getItem('access_token');
     if (access) {
       authService.setAccessToken(access);
       return { access };
     }
 
-    const valid = await authService.checkRefreshToken();
-    if (!valid) return null;
+    // 3. Vérifier si refresh token existe
+    if (!authService.isRefreshTokenPresent()) {
+      console.log("Pas de refresh token → utilisateur déconnecté");
+      return null;
+    }
 
-    const newAccess = authService.getAccessToken();
+    // 4. Tenter refresh
+    const newAccess = await authService.refreshAccessToken();
     return newAccess ? { access: newAccess } : null;
   },
 
