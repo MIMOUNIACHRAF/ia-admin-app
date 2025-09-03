@@ -1,59 +1,131 @@
-import { useEffect, useRef } from "react";
-import { useDispatch } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
-import authService from "../services/authService";
-import { setTokens } from "../features/auth/authSlice";
+import api from '../api/axiosInstance';
+import { API_ENDPOINTS } from '../api/config';
 
-export default function AppInitializer({ children }) {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const hasChecked = useRef(false);
+let accessTokenMemory = null;
+let skipAutoRefresh = false;
 
-  useEffect(() => {
-    // ⚡️ Ne rien faire au premier rendu si on est déjà sur /login
-    if (!hasChecked.current && location.pathname === "/login") {
-      hasChecked.current = true;
-      return;
+const authService = {
+  // --- Access Token ---
+  setAccessToken: (token) => {
+    accessTokenMemory = token;
+    localStorage.setItem('access_token', token);
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  },
+
+  getAccessToken: () => accessTokenMemory || localStorage.getItem('access_token'),
+
+  clearAccessToken: () => {
+    accessTokenMemory = null;
+    localStorage.removeItem('access_token');
+    delete api.defaults.headers.common['Authorization'];
+  },
+
+  // --- Refresh Token ---
+  setRefreshToken: (token) => {
+    document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
+  },
+
+  clearRefreshToken: () => {
+    document.cookie = 'refresh_token=; path=/; max-age=0; samesite=None; secure';
+  },
+
+  isRefreshTokenPresent: () => {
+    return document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
+  },
+
+  setSkipAutoRefresh: (value) => {
+    skipAutoRefresh = value;
+  },
+
+  // --- Login ---
+  login: async (credentials) => {
+    const response = await api.post(API_ENDPOINTS.LOGIN, credentials, { withCredentials: true });
+
+    const access = response.headers['x-access-token'] || response.data.access;
+    if (access) authService.setAccessToken(access);
+
+    if (response.data?.refresh) {
+      authService.setRefreshToken(response.data.refresh);
+      delete response.data.refresh;
     }
 
-    if (hasChecked.current) return;
-    hasChecked.current = true;
+    return response.data;
+  },
 
-    const initAuth = async () => {
-      const access = authService.getAccessToken();
-      const refreshExists = authService.isRefreshTokenPresent();
-
-      console.log("Access token présent ?", !!access);
-      console.log("Refresh token présent ?", refreshExists);
-
-      // CAS 1 : access + refresh → OK
-      if (access && refreshExists) {
-        dispatch(setTokens({ access }));
-        return;
-      }
-
-      // CAS 2 : access absent, refresh présent → tenter refresh
-      if (!access && refreshExists) {
-        const newAccess = await authService.refreshAccessToken();
-        if (newAccess) {
-          dispatch(setTokens({ access: newAccess }));
-        } else {
-          authService.clearAccessToken();
-          authService.clearRefreshToken();
-          navigate("/login", { replace: true });
-        }
-        return;
-      }
-
-      // CAS 3 : refresh absent → session expirée ou première visite
+  // --- Logout ---
+  logout: async () => {
+    try {
+      skipAutoRefresh = true;
       authService.clearAccessToken();
       authService.clearRefreshToken();
-      navigate("/login", { replace: true });
-    };
+      localStorage.clear();
+      await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+    } catch (err) {
+      console.error("Erreur logout :", err);
+    } finally {
+      skipAutoRefresh = false;
+    }
+  },
 
-    initAuth();
-  }, [dispatch, navigate, location.pathname]);
+  // --- Refresh access token ---
+  refreshAccessToken: async () => {
+    if (skipAutoRefresh) return null;
 
-  return children;
-}
+    const refreshToken = document.cookie
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('refresh_token='))
+      ?.split('=')[1];
+
+    if (!refreshToken) {
+      authService.clearAccessToken();
+      return null;
+    }
+
+    try {
+      const response = await api.post(
+        API_ENDPOINTS.REFRESH_TOKEN,
+        {},
+        { withCredentials: true, headers: { "X-Refresh-Token": refreshToken } }
+      );
+
+      const access = response.data.access || response.headers['x-new-access-token'];
+      if (access) authService.setAccessToken(access);
+
+      if (response.data?.refresh) {
+        authService.setRefreshToken(response.data.refresh);
+        delete response.data.refresh;
+      }
+
+      return access;
+    } catch (err) {
+      console.error("Erreur refresh :", err.response?.data || err.message);
+      authService.clearAccessToken();
+      return null;
+    }
+  },
+
+  // --- Initialize auth après reload ---
+  initializeAuth: async () => {
+    if (accessTokenMemory) return { access: accessTokenMemory };
+
+    const access = localStorage.getItem('access_token');
+    if (access) {
+      authService.setAccessToken(access);
+      return { access };
+    }
+
+    if (!authService.isRefreshTokenPresent()) return null;
+
+    const newAccess = await authService.refreshAccessToken();
+    return newAccess ? { access: newAccess } : null;
+  },
+
+  // --- Get user data ---
+  getUserData: async () => {
+    const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
+    return response.data;
+  },
+};
+
+export default authService;
