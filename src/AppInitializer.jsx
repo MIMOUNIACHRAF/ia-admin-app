@@ -14,8 +14,6 @@ export default function AppInitializer({ children }) {
     hasChecked.current = true;
 
     const initAuth = async () => {
-      const access = authService.getAccessToken();
-      const refreshExists = authService.isRefreshTokenPresent();
       const refreshToken = document.cookie
           .split(';')
           .map(c => c.trim())
@@ -23,10 +21,15 @@ export default function AppInitializer({ children }) {
           ?.split('=')[1] || null;
 
         console.log(refreshToken);
+      console.log("Refresh token présent ?", refreshToken);
+      console.log("cookies est ", document.cookie);
+
+      const access = authService.getAccessToken();
+      const refreshExists = authService.isRefreshTokenPresent();
+      
 
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
-      console.log("Refresh token présent ?", refreshToken);
 
       // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
