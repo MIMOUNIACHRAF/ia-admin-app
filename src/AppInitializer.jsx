@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import authService from "./services/authService";
-import { setTokens, clearAuth } from "./features/auth/authSlice";
+import { setTokens, logout } from "./features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 
 export default function AppInitializer({ children }) {
@@ -20,17 +20,17 @@ export default function AppInitializer({ children }) {
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      // 🚨 Refresh token absent → vider tout et rediriger
+      // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
         authService.clearAccessToken();
         authService.clearRefreshToken();
         localStorage.clear();
-        dispatch(clearAuth()); // reset Redux persist:auth
+        dispatch(logout());
         navigate("/login", { replace: true });
         return;
       }
 
-      // 🔄 Refresh token présent mais access absent → tenter refresh
+      // Refresh token présent mais access absent → tenter refresh
       if (!access && refreshExists) {
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
@@ -39,13 +39,13 @@ export default function AppInitializer({ children }) {
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
-          dispatch(clearAuth()); // reset Redux persist:auth
+          dispatch(logout());
           navigate("/login", { replace: true });
         }
         return;
       }
 
-      // ✅ Access + refresh présents → OK, set token
+      // Access + refresh présents → OK
       if (access && refreshExists) {
         dispatch(setTokens({ access }));
       }
