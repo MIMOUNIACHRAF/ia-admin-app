@@ -1,4 +1,3 @@
-// services/authService.js
 import api from '../api/axiosInstance';
 import { API_ENDPOINTS } from '../api/config';
 
@@ -21,7 +20,8 @@ const authService = {
   },
 
   // --- Refresh Token ---
-  isRefreshTokenPresent: () => document.cookie.split(';').some(c => c.trim().startsWith('refresh_token=')),
+  isRefreshTokenPresent: () =>
+    document.cookie.split(';').some(c => c.trim().startsWith('refresh_token=')),
 
   setRefreshToken: (token) => {
     document.cookie = `refresh_token=${token}; path=/; samesite=None; secure`;
@@ -49,7 +49,9 @@ const authService = {
     localStorage.clear();
 
     if (!silent) {
-      try { await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true }); } catch {}
+      try {
+        await api.post(API_ENDPOINTS.LOGOUT, {}, { withCredentials: true });
+      } catch {}
     }
   },
 
@@ -63,10 +65,14 @@ const authService = {
     if (!refreshToken) return null;
 
     try {
-      const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {}, {
-        withCredentials: true,
-        headers: { "X-Refresh-Token": refreshToken }
-      });
+      const response = await api.post(
+        API_ENDPOINTS.REFRESH_TOKEN,
+        {},
+        {
+          withCredentials: true,
+          headers: { 'X-Refresh-Token': refreshToken },
+        }
+      );
 
       const newAccess = response.data.access || response.headers['x-new-access-token'];
       if (newAccess) authService.setAccessToken(newAccess);
@@ -83,7 +89,7 @@ const authService = {
   getUserData: async () => {
     const response = await api.get(API_ENDPOINTS.USER, { withCredentials: true });
     return response.data;
-  }
+  },
 };
 
 export default authService;

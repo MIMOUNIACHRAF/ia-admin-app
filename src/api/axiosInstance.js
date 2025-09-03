@@ -27,6 +27,15 @@ export const initializeAxios = () => {
       const token = authService.getAccessToken();
       if (token) config.headers.Authorization = `Bearer ${token}`;
 
+      // Ajouter refresh token uniquement pour refresh endpoint
+      if (config.url?.endsWith(API_ENDPOINTS.REFRESH_TOKEN)) {
+        const refresh = document.cookie
+          .split(';')
+          .map(c => c.trim())
+          .find(c => c.startsWith('refresh_token='))?.split('=')[1];
+        if (refresh) config.headers['X-Refresh-Token'] = refresh;
+      }
+
       return config;
     },
     (error) => Promise.reject(error)
@@ -46,7 +55,6 @@ export const initializeAxios = () => {
     async (error) => {
       const originalRequest = error.config;
 
-      // Vérifier si 401 et que ce n'est pas déjà un retry
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
@@ -57,14 +65,12 @@ export const initializeAxios = () => {
         }
 
         try {
-          // Tenter refresh access token
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) {
             store.dispatch(logout());
             return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
           }
 
-          // Refaire la requête originale avec le nouveau token
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           store.dispatch(setTokens({ access: newAccess }));
 

@@ -4,7 +4,7 @@ import authService from '../../services/authService';
 
 const initialState = {
   user: null,
-  tokens: { access: null }, // on ne stocke jamais le refresh token côté front
+  tokens: { access: null },
   status: { isAuthenticated: false, isLoading: false, error: null },
 };
 
@@ -27,14 +27,13 @@ const authSlice = createSlice({
         state.status.isAuthenticated = false;
       }
     },
-    // ✅ Logout simple utilisable directement
     logout: () => {
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       return initialState;
     },
   },
   extraReducers: (builder) => {
-    // --- LOGIN ---
     builder.addCase(login.pending, (state) => {
       state.status.isLoading = true;
       state.status.error = null;
@@ -57,13 +56,12 @@ const authSlice = createSlice({
       state.status.isAuthenticated = false;
     });
 
-    // --- LOGOUT (Thunk) ---
     builder.addCase(logoutThunk.fulfilled, () => {
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       return initialState;
     });
 
-    // --- REFRESH TOKEN ---
     builder.addCase(refreshToken.fulfilled, (state, action) => {
       const access = action.payload.access;
       if (access) {
@@ -74,10 +72,10 @@ const authSlice = createSlice({
     });
     builder.addCase(refreshToken.rejected, () => {
       authService.clearAccessToken();
+      authService.clearRefreshToken();
       return initialState;
     });
 
-    // --- FETCH USER ---
     builder.addCase(fetchUserData.pending, (state) => {
       state.status.isLoading = true;
     });
@@ -92,6 +90,5 @@ const authSlice = createSlice({
   },
 });
 
-// ✅ Exporter le logout du reducer pour l'utiliser dans AppInitializer
 export const { clearError, setTokens, logout } = authSlice.actions;
 export default authSlice.reducer;
