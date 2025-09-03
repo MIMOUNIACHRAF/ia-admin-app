@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
-import authService from "./services/authService";
-import { setTokens } from "./features/auth/authSlice";
+import authService from "../services/authService";
+import { setTokens } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 
 export default function AppInitializer({ children }) {
