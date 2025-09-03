@@ -33,6 +33,7 @@ export default function AppInitializer({ children }) {
 
       // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
+        console.log("Refresh token absent → vider tout et rediriger");
         authService.clearAccessToken();
         authService.clearRefreshToken();
         localStorage.clear();
@@ -43,10 +44,13 @@ export default function AppInitializer({ children }) {
 
       // Refresh token présent mais access absent → tenter refresh
       if (!access && refreshExists) {
+        console.log("Refresh token présent mais access absent → tenter refresh");
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
           dispatch(setTokens({ access: newAccess }));
-        } else {
+        } 
+        else {
+          console.log("Refresh token absent → vider tout et rediriger");
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
