@@ -20,7 +20,7 @@ export default function AppInitializer({ children }) {
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      // CAS 1 : access + refresh → OK, rien à faire
+      // CAS 1 : access + refresh → OK
       if (access && refreshExists) {
         dispatch(setTokens({ access }));
         return;
@@ -40,7 +40,14 @@ export default function AppInitializer({ children }) {
         }
       }
 
-      // CAS 3 & 4 : aucun token → juste redirection login, pas besoin de logout serveur
+      // CAS 3 : access présent, refresh absent → logout serveur + frontend
+      if (access && !refreshExists) {
+        await dispatch(logout());
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      // CAS 4 : aucun token → juste redirection login, pas besoin de logout serveur
       navigate("/login", { replace: true });
     };
 
