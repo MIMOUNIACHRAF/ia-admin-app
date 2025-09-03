@@ -16,11 +16,17 @@ export default function AppInitializer({ children }) {
     const initAuth = async () => {
       const access = authService.getAccessToken();
       const refreshExists = authService.isRefreshTokenPresent();
-      const return1 = document.cookie.split(';').some(c => c.trim().startsWith('refresh_token='));
+      const refreshToken = document.cookie
+          .split(';')
+          .map(c => c.trim())
+          .find(c => c.startsWith('refresh_token='))
+          ?.split('=')[1] || null;
+
+        console.log(refreshToken);
 
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
-      console.log("Refresh token présent ?", return1);
+      console.log("Refresh token présent ?", refreshToken);
 
       // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
