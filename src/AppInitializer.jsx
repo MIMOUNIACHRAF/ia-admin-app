@@ -34,11 +34,11 @@ export default function AppInitializer({ children }) {
       // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
         console.log("Refresh token absent → vider tout et rediriger");
-        authService.clearAccessToken();
-        authService.clearRefreshToken();
-        localStorage.clear();
-        dispatch(logout());
-        navigate("/login", { replace: true });
+        // authService.clearAccessToken();
+        // authService.clearRefreshToken();
+        // localStorage.clear();
+        // dispatch(logout());
+        // navigate("/login", { replace: true });
         return;
       }
 
