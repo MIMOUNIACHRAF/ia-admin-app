@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import authService from "./services/authService";
-import { setTokens, logout } from "./features/auth/authSlice";
+import { setTokens } from "./features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 
 export default function AppInitializer({ children }) {
@@ -26,28 +26,23 @@ export default function AppInitializer({ children }) {
         return;
       }
 
-      // CAS 2 : access absent, refresh présent → tenter refresh
+      // CAS 2 : access absent, refresh présent → refresh token
       if (!access && refreshExists) {
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
           dispatch(setTokens({ access: newAccess }));
-          return;
         } else {
-          // refresh token invalide → logout serveur + frontend
-          await dispatch(logout());
+          // Tokens invalides → vider et rediriger
+          authService.clearAccessToken();
+          authService.clearRefreshToken();
           navigate("/login", { replace: true });
-          return;
         }
-      }
-
-      // CAS 3 : access présent, refresh absent → logout serveur + frontend
-      if (access && !refreshExists) {
-        await dispatch(logout());
-        navigate("/login", { replace: true });
         return;
       }
 
-      // CAS 4 : aucun token → juste redirection login, pas besoin de logout serveur
+      // CAS 3 & 4 : access absent ou refresh absent → vider et rediriger
+      authService.clearAccessToken();
+      authService.clearRefreshToken();
       navigate("/login", { replace: true });
     };
 
