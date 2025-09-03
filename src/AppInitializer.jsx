@@ -33,12 +33,12 @@ export default function AppInitializer({ children }) {
 
       // Refresh token absent → vider tout et rediriger
       if (!refreshExists) {
-        console.log("Refresh token absent → vider tout et rediriger");
-        // authService.clearAccessToken();
-        // authService.clearRefreshToken();
-        // localStorage.clear();
-        // dispatch(logout());
-        // navigate("/login", { replace: true });
+        console.log("Refresh token absent → vider tout et rediriger1");
+        authService.clearAccessToken();
+        authService.clearRefreshToken();
+        localStorage.clear();
+        dispatch(logout());
+        navigate("/login", { replace: true });
         return;
       }
 
@@ -50,7 +50,7 @@ export default function AppInitializer({ children }) {
           dispatch(setTokens({ access: newAccess }));
         } 
         else {
-          console.log("Refresh token absent → vider tout et rediriger");
+          console.log("Refresh token absent → vider tout et rediriger2");
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
