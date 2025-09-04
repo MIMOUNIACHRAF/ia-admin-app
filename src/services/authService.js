@@ -219,6 +219,9 @@ refreshAccessToken: async (onInvalidRefresh) => {
     console.log("⏸ Refresh déjà en cours → on attend la même promesse");
     return refreshPromise.catch(() => {
       // Si la promesse précédente a échoué, on la remet à null
+      authService.clearAccessToken();
+      authService.clearRefreshToken();
+      localStorage.clear();
       refreshPromise = null;
       return null;
     });
