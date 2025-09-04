@@ -5,7 +5,6 @@ import { selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 import { setTokens, logout } from "../features/auth/authSlice";
 
-// --- Hook pour vérifier l'auth ---
 const useAuthCheck = () => {
   const accessToken = useSelector(selectAccessToken);
   const dispatch = useDispatch();
@@ -18,16 +17,17 @@ const useAuthCheck = () => {
         let token = accessToken || authService.getAccessToken();
 
         if (token) {
+          // Access token présent → OK
           dispatch(setTokens({ access: token }));
           setIsValid(true);
         } else {
-          // ✅ Vérifie si refresh token est valide
-          const refreshValid = await authService.checkRefreshToken();
-          if (refreshValid) {
-            const newAccess = authService.getAccessToken();
+          // Essayer de rafraîchir l'access token via backend
+          const newAccess = await authService.refreshAccessToken();
+          if (newAccess) {
             dispatch(setTokens({ access: newAccess }));
             setIsValid(true);
           } else {
+            // Refresh token absent / expiré
             await authService.logout();
             dispatch(logout());
             setIsValid(false);
@@ -48,14 +48,14 @@ const useAuthCheck = () => {
   return { isChecking, isValid };
 };
 
-// --- PrivateRoute : accès uniquement si authentifié ---
+// PrivateRoute : accès uniquement si authentifié
 export function PrivateRoute() {
   const { isChecking, isValid } = useAuthCheck();
   if (isChecking) return <div>Loading...</div>;
   return isValid ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
-// --- PublicRoute : accès uniquement si non authentifié ---
+// PublicRoute : accès uniquement si non authentifié
 export function PublicRoute() {
   const { isChecking, isValid } = useAuthCheck();
   if (isChecking) return <div>Loading...</div>;
