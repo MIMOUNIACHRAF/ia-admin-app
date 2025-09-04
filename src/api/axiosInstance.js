@@ -34,6 +34,7 @@ export const initializeAxios = () => {
           .map(c => c.trim())
           .find(c => c.startsWith('refresh_token='))?.split('=')[1];
           console.log("refrehs is ",refresh);
+          console.log("document.cookie is ",document.cookie);
         if (refresh) config.headers['X-Refresh-Token'] = refresh;
       }
 
