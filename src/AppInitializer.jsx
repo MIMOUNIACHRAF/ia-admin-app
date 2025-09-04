@@ -14,44 +14,37 @@ export default function AppInitializer({ children }) {
     hasChecked.current = true;
 
     const initAuth = async () => {
-      const refreshToken = document.cookie
-          .split(';')
-          .map(c => c.trim())
-          .find(c => c.startsWith('refresh_token='))
-          ?.split('=')[1] || null;
-
-        console.log(refreshToken);
+      // Lire le refresh token directement depuis le cookie
+      const refreshToken = authService.getRefreshToken();
       console.log("Refresh token présent ?", refreshToken);
-      console.log("cookies est ", document.cookie);
+      console.log("Cookies actuels :", document.cookie);
 
       const access = authService.getAccessToken();
-      const refreshExists = authService.isRefreshTokenPresent();
-      
+      const refreshExists = !!refreshToken;
 
       console.log("Access token présent ?", !!access);
       console.log("Refresh token présent ?", refreshExists);
 
-      // Refresh token absent → vider tout et rediriger
+      // Pas de refresh token → vider tout et rediriger
       if (!refreshExists) {
-        console.log("Refresh token absent → vider tout et rediriger1");
-        
+        console.log("Refresh token absent → vider tout et rediriger");
         localStorage.clear();
-        dispatch(logout());
-        navigate("/login", { replace: true });
         authService.clearAccessToken();
         authService.clearRefreshToken();
+        dispatch(logout());
+        navigate("/login", { replace: true });
         return;
       }
 
       // Refresh token présent mais access absent → tenter refresh
       if (!access && refreshExists) {
-        console.log("Refresh token présent mais access absent → tenter refresh");
+        console.log("Access absent mais refresh présent → tenter refresh");
         const newAccess = await authService.refreshAccessToken();
         if (newAccess) {
+          authService.setAccessToken(newAccess);
           dispatch(setTokens({ access: newAccess }));
-        } 
-        else {
-          console.log("Refresh token absent → vider tout et rediriger2");
+        } else {
+          console.log("Refresh échoué → vider tout et rediriger");
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
@@ -61,7 +54,7 @@ export default function AppInitializer({ children }) {
         return;
       }
 
-      // Access + refresh présents → OK
+      // Access + refresh présents → tout est OK
       if (access && refreshExists) {
         dispatch(setTokens({ access }));
       }
