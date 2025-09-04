@@ -142,8 +142,7 @@ const authService = {
   } finally {
     skipAutoRefresh = false;
   }
-};
-
+},
 
 
   // --- Initialize auth après reload ---
