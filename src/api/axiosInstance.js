@@ -33,6 +33,7 @@ export const initializeAxios = () => {
           .split(';')
           .map(c => c.trim())
           .find(c => c.startsWith('refresh_token='))?.split('=')[1];
+          console.log("refrehs is ",refresh);
         if (refresh) config.headers['X-Refresh-Token'] = refresh;
       }
 
