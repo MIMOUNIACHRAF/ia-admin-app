@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authThunks";
+import { useState } from "react";
 
 const menu = [
   { label: "Accueil", icon: <HomeIcon size={20} />, to: "/" },
@@ -23,10 +24,21 @@ export default function Sidebar({ onClose }) {
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [loadingLogout, setLoadingLogout] = useState(false);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login");
+  const handleLogout = async () => {
+    if (loadingLogout) return; // éviter double clic
+    setLoadingLogout(true);
+
+    try {
+      await dispatch(logout()).unwrap(); // unwrap pour gérer l'erreur si échec
+      navigate("/login");
+    } catch (err) {
+      console.error("Erreur lors du logout :", err);
+      alert("Impossible de se déconnecter, réessayez.");
+    } finally {
+      setLoadingLogout(false);
+    }
   };
 
   return (
@@ -72,10 +84,15 @@ export default function Sidebar({ onClose }) {
       <div className="p-4 border-t">
         <button
           onClick={handleLogout}
-          className="flex items-center w-full px-4 py-2 text-sm text-red-600 rounded-lg hover:bg-red-100 transition"
+          disabled={loadingLogout}
+          className={`flex items-center w-full px-4 py-2 text-sm rounded-lg transition ${
+            loadingLogout
+              ? "bg-red-200 text-red-400 cursor-not-allowed"
+              : "text-red-600 hover:bg-red-100"
+          }`}
         >
           <LogOut size={20} className="mr-3" />
-          Déconnexion
+          {loadingLogout ? "Déconnexion..." : "Déconnexion"}
         </button>
       </div>
     </aside>

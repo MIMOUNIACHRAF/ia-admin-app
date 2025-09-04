@@ -67,27 +67,35 @@ const authService = {
   // --- Logout ---
   logout: async () => {
     try {
+      // Désactiver temporairement le refresh automatique
       skipAutoRefresh = true;
 
       const refreshToken = authService.getRefreshToken();
 
+      // Nettoyer tous les tokens côté front
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
 
+      // Envoyer la requête logout au backend si refresh token présent
       if (refreshToken) {
         await api.post(
           API_ENDPOINTS.LOGOUT,
-          {},
+          {}, // corps vide
           { headers: { "X-Refresh-Token": refreshToken } }
         );
       }
     } catch (err) {
-      console.error("Erreur logout :", err.response?.data || err.message);
+      console.error(
+        "Erreur logout :",
+        err.response?.data || err.message
+      );
     } finally {
+      // Réactiver le refresh automatique
       skipAutoRefresh = false;
     }
-  },
+},
+
 
   // --- Refresh Access Token ---
  refreshAccessToken: async () => {
