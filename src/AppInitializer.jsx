@@ -37,14 +37,13 @@ export default function AppInitializer({ children }) {
         if (!access && refreshExists) {
           console.log("Access absent mais refresh présent → tenter refresh");
           const newAccess = await authService.refreshAccessToken();
-          console.log("Valeur renvoyée par refreshAccessToken:", newAccess);
 
           if (newAccess) {
             console.log("✅ Refresh réussi, nouvel access token stocké");
             dispatch(setTokens({ access: newAccess }));
             return;
           } else {
-            console.log("❌ Refresh échoué → vider tout et rediriger");
+            console.log("❌ Refresh invalide → vider tout et rediriger");
             authService.clearAccessToken();
             authService.clearRefreshToken();
             localStorage.clear();

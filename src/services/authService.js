@@ -203,57 +203,59 @@ const authService = {
 // },
 
 refreshAccessToken: async () => {
-  if (skipAutoRefresh && refreshPromise) {
-    console.log("⏸ Refresh déjà en cours → on attend la même promesse");
-    return refreshPromise;
-  }
-
-  const refreshToken = authService.getRefreshToken();
-  if (!refreshToken) {
-    console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
-    authService.clearAccessToken();
-    return null;
-  }
-
-  // Lancer une seule promesse pour les refresh concurrents
-  skipAutoRefresh = true;
-  refreshPromise = (async () => {
-    try {
-      console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
-
-      const response = await api.post(
-        API_ENDPOINTS.REFRESH_TOKEN,
-        {},
-        { headers: { "X-Refresh-Token": refreshToken } }
-      );
-
-      const accessToken =
-        response.data?.access || response.headers["x-new-access-token"];
-
-      if (accessToken) {
-        authService.setAccessToken(accessToken);
-        console.log("✅ Nouveau access token reçu:", accessToken);
-      }
-
-      if (response.data?.refresh) {
-        authService.setRefreshToken(response.data.refresh);
-        console.log("♻️ Nouveau refresh token mis à jour");
-      }
-
-      return accessToken || null;
-    } catch (err) {
-      console.error("❌ Erreur lors du refresh token :", err.response?.data || err.message);
+    const refreshToken = authService.getRefreshToken();
+    if (!refreshToken) {
+      console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
       authService.clearAccessToken();
       authService.clearRefreshToken();
+      localStorage.clear();
       return null;
-    } finally {
-      skipAutoRefresh = false;
-      refreshPromise = null; // reset pour les prochains appels
     }
-  })();
 
-  return refreshPromise;
-},
+    if (skipAutoRefresh && refreshPromise) {
+      console.log("⏸ Refresh déjà en cours → on attend la même promesse");
+      return refreshPromise;
+    }
+
+    skipAutoRefresh = true;
+    refreshPromise = (async () => {
+      try {
+        console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
+
+        const response = await api.post(
+          API_ENDPOINTS.REFRESH_TOKEN,
+          {},
+          { headers: { "X-Refresh-Token": refreshToken } }
+        );
+
+        const accessToken =
+          response.data?.access || response.headers["x-new-access-token"];
+
+        if (accessToken) {
+          authService.setAccessToken(accessToken);
+          console.log("✅ Nouveau access token reçu:", accessToken);
+        }
+
+        if (response.data?.refresh) {
+          authService.setRefreshToken(response.data.refresh);
+          console.log("♻️ Nouveau refresh token mis à jour");
+        }
+
+        return accessToken || null;
+      } catch (err) {
+        console.error("❌ Refresh échoué :", err.response?.data || err.message);
+        authService.clearAccessToken();
+        authService.clearRefreshToken();
+        localStorage.clear();
+        return null;
+      } finally {
+        skipAutoRefresh = false;
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
+  },
 
 
   // --- Initialize auth après reload ---
