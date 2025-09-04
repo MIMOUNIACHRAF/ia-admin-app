@@ -130,11 +130,10 @@ const authService = {
     const accessToken = response.data?.access || response.headers["x-new-access-token"];
     if (accessToken) authService.setAccessToken(accessToken);
 
-    const newRefreshToken = response.data?.refresh;
-    if (newRefreshToken) {
-      authService.setRefreshToken(newRefreshToken);
-    }
-
+    // const newRefreshToken = response.data?.refresh;
+    // if (newRefreshToken) {
+    //   authService.setRefreshToken(newRefreshToken);
+    // }
     return accessToken;
   } catch (err) {
     console.error("Erreur lors du refresh token :", err.response?.data || err.message);
