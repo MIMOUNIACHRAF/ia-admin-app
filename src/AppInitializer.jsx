@@ -28,16 +28,21 @@ export default function AppInitializer({ children }) {
         logoutAndRedirect();
         return;
       }
-
       if (!accessToken) {
         console.log("⏳ Access token absent → tentative de refresh");
         const newAccess = await authService.refreshAccessToken(logoutAndRedirect);
+
         if (newAccess) {
           console.log("✅ Refresh réussi, access token stocké");
           dispatch(setTokens({ access: newAccess }));
+        } else {
+          console.log("❌ Refresh échoué → logout immédiat");
+          logoutAndRedirect(); // on force le logout ici
         }
-        return; // Si refresh échoue, logoutAndRedirect est déjà appelé
+
+        return;
       }
+
 
       console.log("✅ Access + refresh token présents → OK");
       dispatch(setTokens({ access: accessToken }));
