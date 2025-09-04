@@ -48,8 +48,11 @@ export default function AppInitializer({ children }) {
         if (newAccess) {
           authService.setAccessToken(newAccess);
           dispatch(setTokens({ access: newAccess }));
+          console.log("new access token est", newAccess);
         } else {
           console.log("Refresh échoué → vider tout et rediriger");
+          console.log("new access token est", newAccess);
+          
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
