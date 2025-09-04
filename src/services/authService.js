@@ -91,13 +91,14 @@ const authService = {
 
   // --- Refresh Access Token ---
   refreshAccessToken: async () => {
-    if (skipAutoRefresh) return null;
 
     const refreshToken = authService.getRefreshToken();
     if (!refreshToken) {
       authService.clearAccessToken();
       return null;
     }
+    
+    if (skipAutoRefresh) return null;
 
     try {
       const response = await api.post(
