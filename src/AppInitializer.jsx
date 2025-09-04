@@ -15,10 +15,15 @@ export default function AppInitializer({ children }) {
 
     const initAuth = async () => {
       // Lire le refresh token directement depuis le cookie
+      const refreh2 = document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("refresh_token="))
+        ?.split("=")[1] || null;
       const refreshToken = authService.getRefreshToken();
       console.log("Refresh token présent ?", refreshToken);
-      console.log("Cookies actuels :", document.cookie);
-
+      console.log("Cookies actuels :", refreh2);
+      console.log('comarison ===', refreh2 === refreshToken);
       const access = authService.getAccessToken();
       const refreshExists = !!refreshToken;
 
