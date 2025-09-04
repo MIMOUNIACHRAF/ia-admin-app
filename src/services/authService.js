@@ -108,6 +108,7 @@ const authService = {
   if (skipAutoRefresh) return null;
 
   const refreshToken = authService.getRefreshToken();
+  console.log("Refresh token: service ", refreshToken);
   if (!refreshToken) {
     authService.clearAccessToken();
     return null;
@@ -128,6 +129,7 @@ const authService = {
     );
 
     const accessToken = response.data?.access || response.headers["x-new-access-token"];
+    console.log("New access token:", accessToken);
     if (accessToken) authService.setAccessToken(accessToken);
 
     // const newRefreshToken = response.data?.refresh;
@@ -135,7 +137,8 @@ const authService = {
     //   authService.setRefreshToken(newRefreshToken);
     // }
     return accessToken;
-  } catch (err) {
+  } 
+  catch (err) {
     console.error("Erreur lors du refresh token :", err.response?.data || err.message);
     authService.clearAccessToken();
     authService.clearRefreshToken();
