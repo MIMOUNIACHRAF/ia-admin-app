@@ -202,13 +202,15 @@ const authService = {
 //   }
 // },
 
-refreshAccessToken: async () => {
+refreshAccessToken: async (onInvalidRefresh) => {
     const refreshToken = authService.getRefreshToken();
+
     if (!refreshToken) {
       console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
+      if (onInvalidRefresh) onInvalidRefresh();
       return null;
     }
 
@@ -221,15 +223,13 @@ refreshAccessToken: async () => {
     refreshPromise = (async () => {
       try {
         console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
-
         const response = await api.post(
           API_ENDPOINTS.REFRESH_TOKEN,
           {},
           { headers: { "X-Refresh-Token": refreshToken } }
         );
 
-        const accessToken =
-          response.data?.access || response.headers["x-new-access-token"];
+        const accessToken = response.data?.access || response.headers["x-new-access-token"];
 
         if (accessToken) {
           authService.setAccessToken(accessToken);
@@ -247,6 +247,7 @@ refreshAccessToken: async () => {
         authService.clearAccessToken();
         authService.clearRefreshToken();
         localStorage.clear();
+        if (onInvalidRefresh) onInvalidRefresh(); // ⚠️ on force le logout/redirection
         return null;
       } finally {
         skipAutoRefresh = false;
@@ -256,7 +257,6 @@ refreshAccessToken: async () => {
 
     return refreshPromise;
   },
-
 
   // --- Initialize auth après reload ---
   initializeAuth: async () => {

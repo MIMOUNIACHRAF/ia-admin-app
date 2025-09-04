@@ -13,6 +13,11 @@ export default function AppInitializer({ children }) {
     if (hasChecked.current) return;
     hasChecked.current = true;
 
+    const logoutAndRedirect = () => {
+      dispatch(logout());
+      navigate("/login", { replace: true });
+    };
+
     const initAuth = async () => {
       try {
         const refreshToken = authService.getRefreshToken();
@@ -22,38 +27,26 @@ export default function AppInitializer({ children }) {
         console.log("Access token présent ?", !!access);
         console.log("Refresh token présent ?", refreshExists);
 
-        // 1️⃣ Pas de refresh token → tout nettoyer
         if (!refreshExists) {
           console.log("Refresh token absent → vider tout et rediriger");
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
-          dispatch(logout());
-          navigate("/login", { replace: true });
+          logoutAndRedirect();
           return;
         }
 
-        // 2️⃣ Refresh présent mais access absent → tenter refresh
         if (!access && refreshExists) {
           console.log("Access absent mais refresh présent → tenter refresh");
-          const newAccess = await authService.refreshAccessToken();
-
+          const newAccess = await authService.refreshAccessToken(logoutAndRedirect);
           if (newAccess) {
             console.log("✅ Refresh réussi, nouvel access token stocké");
             dispatch(setTokens({ access: newAccess }));
-            return;
-          } else {
-            console.log("❌ Refresh invalide → vider tout et rediriger");
-            authService.clearAccessToken();
-            authService.clearRefreshToken();
-            localStorage.clear();
-            dispatch(logout());
-            navigate("/login", { replace: true });
-            return;
           }
+          // Si refresh invalide, logoutAndRedirect est déjà appelé depuis refreshAccessToken
+          return;
         }
 
-        // 3️⃣ Access + refresh présents → tout est OK
         if (access && refreshExists) {
           console.log("✅ Access + refresh présents → OK");
           dispatch(setTokens({ access }));
@@ -63,8 +56,7 @@ export default function AppInitializer({ children }) {
         authService.clearAccessToken();
         authService.clearRefreshToken();
         localStorage.clear();
-        dispatch(logout());
-        navigate("/login", { replace: true });
+        logoutAndRedirect();
       }
     };
 
