@@ -214,7 +214,7 @@ refreshAccessToken: async (onInvalidRefresh) => {
     return null;
   }
 
-  // Si un refresh est déjà en cours, on retourne la même promesse
+  // Si un refresh est déjà en cours, attendre la promesse existante
   if (refreshPromise) {
     console.log("⏸ Refresh déjà en cours → on attend la même promesse");
     return refreshPromise;
@@ -224,29 +224,38 @@ refreshAccessToken: async (onInvalidRefresh) => {
   refreshPromise = (async () => {
     try {
       console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
-
       const response = await api.post(
         API_ENDPOINTS.REFRESH_TOKEN,
-        { refresh: refreshToken } // <-- envoyer dans body si backend Django/SimpleJWT
+        {},
+        { headers: { "X-Refresh-Token": refreshToken } }
       );
 
       const accessToken = response.data?.access || response.headers["x-new-access-token"];
-      if (accessToken) authService.setAccessToken(accessToken);
-      if (response.data?.refresh) authService.setRefreshToken(response.data.refresh);
+      if (accessToken) {
+        authService.setAccessToken(accessToken);
+        console.log("✅ Nouveau access token reçu");
+      }
+
+      if (response.data?.refresh) {
+        authService.setRefreshToken(response.data.refresh);
+        console.log("♻️ Nouveau refresh token mis à jour");
+      }
 
       return accessToken || null;
     } catch (err) {
       console.error("❌ Refresh échoué :", err.response?.data || err.message);
-
-      // **Logout immédiat**
+      // Reset immédiat et logout
+      refreshPromise = null;
+      skipAutoRefresh = false;
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
-      if (onInvalidRefresh) onInvalidRefresh(); // redirection vers /login
+      if (onInvalidRefresh) onInvalidRefresh();
       return null;
     } finally {
-      skipAutoRefresh = false;
+      // S'assurer que refreshPromise est null pour les prochains appels
       refreshPromise = null;
+      skipAutoRefresh = false;
     }
   })();
 
