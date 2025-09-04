@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import authService from "./services/authService";
 import { setTokens, logout } from "./features/auth/authSlice";
-import { useNavigate } from "react-router-dom";
 
 export default function AppInitializer({ children }) {
   const dispatch = useDispatch();
@@ -21,12 +21,13 @@ export default function AppInitializer({ children }) {
     const initAuth = async () => {
       try {
         const refreshToken = authService.getRefreshToken();
-        const access = authService.getAccessToken();
+        const accessToken = authService.getAccessToken();
         const refreshExists = !!refreshToken;
 
-        console.log("Access token présent ?", !!access);
+        console.log("Access token présent ?", !!accessToken);
         console.log("Refresh token présent ?", refreshExists);
 
+        // Pas de refresh token → logout immédiat
         if (!refreshExists) {
           console.log("Refresh token absent → logout forcé");
           authService.clearAccessToken();
@@ -36,19 +37,21 @@ export default function AppInitializer({ children }) {
           return;
         }
 
-        if (!access && refreshExists) {
+        // Refresh token présent mais access absent → tenter refresh
+        if (!accessToken && refreshExists) {
           console.log("Access absent mais refresh présent → tenter refresh");
           const newAccess = await authService.refreshAccessToken(logoutAndRedirect);
           if (newAccess) {
             console.log("✅ Refresh réussi, nouvel access token stocké");
             dispatch(setTokens({ access: newAccess }));
           }
-          return; // Si refresh invalide, logoutAndRedirect est déjà appelé
+          return; // Si refresh échoue, logoutAndRedirect est appelé
         }
 
-        if (access && refreshExists) {
+        // Access + refresh présents → tout va bien
+        if (accessToken && refreshExists) {
           console.log("✅ Access + refresh présents → OK");
-          dispatch(setTokens({ access }));
+          dispatch(setTokens({ access: accessToken }));
         }
       } catch (err) {
         console.error("Erreur initAuth:", err);
