@@ -45,14 +45,12 @@ export default function AppInitializer({ children }) {
       if (!access && refreshExists) {
         console.log("Access absent mais refresh présent → tenter refresh");
         const newAccess = await authService.refreshAccessToken();
-        
+        console.log("Refresh réussi ?", newAccess);
         if (newAccess) {
           authService.setAccessToken(newAccess);
           dispatch(setTokens({ access: newAccess }));
-          console.log("new access token est", newAccess);
         } else {
           console.log("Refresh échoué → vider tout et rediriger");
-          console.log("new access token est", newAccess);
           
           authService.clearAccessToken();
           authService.clearRefreshToken();

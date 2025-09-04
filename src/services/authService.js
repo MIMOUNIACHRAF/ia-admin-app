@@ -165,7 +165,7 @@ refreshAccessToken: async () => {
     // Récupérer le nouvel access token
     const accessToken = response.data?.access || response.headers["x-new-access-token"];
     if (accessToken) authService.setAccessToken(accessToken);
-
+    console.log("New access token:", accessToken);
     // Mettre à jour le refresh token si le backend en renvoie un nouveau
     if (response.data?.refresh) {
       authService.setRefreshToken(response.data.refresh);
