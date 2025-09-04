@@ -144,10 +144,14 @@ const authService = {
 //   }
 // },
 refreshAccessToken: async () => {
-  if (skipAutoRefresh) return null;
+  if (skipAutoRefresh) {
+    console.log("⏸ Refresh bloqué temporairement (skipAutoRefresh = true)");
+    return null;
+  }
 
   const refreshToken = authService.getRefreshToken();
   if (!refreshToken) {
+    console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
     authService.clearAccessToken();
     return null;
   }
@@ -155,6 +159,7 @@ refreshAccessToken: async () => {
   try {
     // Bloquer les refresh concurrents pendant cet appel
     skipAutoRefresh = true;
+    console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
 
     const response = await api.post(
       API_ENDPOINTS.REFRESH_TOKEN,
@@ -162,19 +167,31 @@ refreshAccessToken: async () => {
       { headers: { "X-Refresh-Token": refreshToken } }
     );
 
-    // Récupérer le nouvel access token
-    const accessToken = response.data?.access || response.headers["x-new-access-token"];
-    if (accessToken) authService.setAccessToken(accessToken);
-    console.log("New access token:", accessToken);
-    // Mettre à jour le refresh token si le backend en renvoie un nouveau
+    // Extraire le nouvel access token
+    const accessToken =
+      response.data?.access || response.headers["x-new-access-token"];
+
+    if (accessToken) {
+      authService.setAccessToken(accessToken);
+      console.log("✅ Nouveau access token reçu:", accessToken);
+    } else {
+      console.warn("⚠️ Aucun access token reçu dans la réponse du refresh");
+    }
+
+    // Mettre à jour le refresh token si un nouveau est fourni
     if (response.data?.refresh) {
       authService.setRefreshToken(response.data.refresh);
+      console.log("♻️ Nouveau refresh token mis à jour");
       delete response.data.refresh;
     }
 
-    return accessToken;
+    console.log("↩️ Valeur retournée par refreshAccessToken:", accessToken || null);
+    return accessToken || null;
   } catch (err) {
-    console.error("Erreur lors du refresh token :", err.response?.data || err.message);
+    console.error(
+      "❌ Erreur lors du refresh token :",
+      err.response?.data || err.message
+    );
     authService.clearAccessToken();
     authService.clearRefreshToken();
     return null;
@@ -183,6 +200,7 @@ refreshAccessToken: async () => {
     skipAutoRefresh = false;
   }
 },
+
 
 
   // --- Initialize auth après reload ---
