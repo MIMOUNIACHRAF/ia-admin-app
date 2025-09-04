@@ -104,42 +104,82 @@ const authService = {
 
 
   // --- Refresh Access Token ---
- refreshAccessToken: async () => {
+//  refreshAccessToken: async () => {
+//   if (skipAutoRefresh) return null;
+
+//   const refreshToken = authService.getRefreshToken();
+//   console.log("Refresh token: service ", refreshToken);
+//   if (!refreshToken) {
+//     authService.clearAccessToken();
+//     return null;
+//   }
+
+//   try {
+//     // Bloquer le refresh automatique pendant cet appel
+//     skipAutoRefresh = true;
+
+//     const response = await api.post(
+//       API_ENDPOINTS.REFRESH_TOKEN,
+//       {},
+//       {
+//         headers: {
+//           "X-Refresh-Token": refreshToken,
+//         },
+//       }
+//     );
+
+//     const accessToken = response.data?.access || response.headers["x-new-access-token"];
+//     console.log("New access token:", accessToken);
+//     if (accessToken) authService.setAccessToken(accessToken);
+//     return accessToken;
+//   } 
+//   catch (err) {
+//     console.error("Erreur lors du refresh token :", err.response?.data || err.message);
+//     authService.clearAccessToken();
+//     authService.clearRefreshToken();
+//     return null;
+//   } finally {
+//     // Débloquer le refresh automatique après l'appel
+//     skipAutoRefresh = false;
+//   }
+// },
+refreshAccessToken: async () => {
   if (skipAutoRefresh) return null;
 
   const refreshToken = authService.getRefreshToken();
-  console.log("Refresh token: service ", refreshToken);
   if (!refreshToken) {
     authService.clearAccessToken();
     return null;
   }
 
   try {
+    // Bloquer les refresh concurrents pendant cet appel
     skipAutoRefresh = true;
 
-    // Utiliser un axios temporaire sans interceptors
-    const response = await axios.post(
-      API_BASE_URL + API_ENDPOINTS.REFRESH_TOKEN,
+    const response = await api.post(
+      API_ENDPOINTS.REFRESH_TOKEN,
       {},
-      {
-        headers: {
-          "X-Refresh-Token": refreshToken,
-        },
-        withCredentials: true,
-      }
+      { headers: { "X-Refresh-Token": refreshToken } }
     );
 
+    // Récupérer le nouvel access token
     const accessToken = response.data?.access || response.headers["x-new-access-token"];
-    console.log("New access token:", accessToken);
     if (accessToken) authService.setAccessToken(accessToken);
+
+    // Mettre à jour le refresh token si le backend en renvoie un nouveau
+    if (response.data?.refresh) {
+      authService.setRefreshToken(response.data.refresh);
+      delete response.data.refresh;
+    }
 
     return accessToken;
   } catch (err) {
-    console.error("Erreur refresh token:", err.response?.data || err.message);
+    console.error("Erreur lors du refresh token :", err.response?.data || err.message);
     authService.clearAccessToken();
     authService.clearRefreshToken();
     return null;
   } finally {
+    // Débloquer le refresh automatique après l'appel
     skipAutoRefresh = false;
   }
 },
