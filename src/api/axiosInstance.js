@@ -37,7 +37,6 @@ export const initializeAxios = () => {
           console.log("document.cookie is ",document.cookie);
         if (refresh) config.headers['X-Refresh-Token'] = refresh;
       }
-
       return config;
     },
     (error) => Promise.reject(error)
@@ -62,6 +61,8 @@ export const initializeAxios = () => {
 
         // Vérifier si refresh token existe
         if (!authService.isRefreshTokenPresent()) {
+          console.log("refrehs is 2 ",refresh);
+          console.log("document.cookie is ",document.cookie);
           store.dispatch(logout());
           return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
         }
@@ -69,6 +70,8 @@ export const initializeAxios = () => {
         try {
           const newAccess = await authService.refreshAccessToken();
           if (!newAccess) {
+            console.log("refrehs is 3",refresh);
+          console.log("document.cookie is ",document.cookie);
             store.dispatch(logout());
             return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
           }
@@ -78,6 +81,8 @@ export const initializeAxios = () => {
 
           return axiosInstance(originalRequest);
         } catch (err) {
+          console.log("refrehs is 4",refresh);
+          console.log("document.cookie is ",document.cookie);
           store.dispatch(logout());
           return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
         }
