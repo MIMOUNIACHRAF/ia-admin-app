@@ -32,7 +32,7 @@ export default function AppInitializer({ children }) {
         console.log("⏳ Access token absent → tentative de refresh");
         const newAccess = await Promise.race([
           authService.refreshAccessToken(logoutAndRedirect),
-          new Promise(resolve => setTimeout(() => resolve(null), 5000)) // timeout 5s
+          new Promise(resolve => setTimeout(() => resolve(null), 500)) // timeout 5s
         ]);
 
         if (newAccess) {
