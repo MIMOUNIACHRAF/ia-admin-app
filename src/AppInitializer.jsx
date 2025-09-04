@@ -45,8 +45,7 @@ export default function AppInitializer({ children }) {
       if (!access && refreshExists) {
         console.log("Access absent mais refresh présent → tenter refresh");
         const newAccess = await authService.refreshAccessToken();
-          console.log("new access token est 1111 ", newAccess);
-
+        
         if (newAccess) {
           authService.setAccessToken(newAccess);
           dispatch(setTokens({ access: newAccess }));

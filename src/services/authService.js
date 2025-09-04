@@ -115,16 +115,17 @@ const authService = {
   }
 
   try {
-    // Bloquer le refresh automatique pendant cet appel
     skipAutoRefresh = true;
 
-    const response = await api.post(
-      API_ENDPOINTS.REFRESH_TOKEN,
+    // Utiliser un axios temporaire sans interceptors
+    const response = await axios.post(
+      API_BASE_URL + API_ENDPOINTS.REFRESH_TOKEN,
       {},
       {
         headers: {
           "X-Refresh-Token": refreshToken,
         },
+        withCredentials: true,
       }
     );
 
@@ -132,22 +133,17 @@ const authService = {
     console.log("New access token:", accessToken);
     if (accessToken) authService.setAccessToken(accessToken);
 
-    // const newRefreshToken = response.data?.refresh;
-    // if (newRefreshToken) {
-    //   authService.setRefreshToken(newRefreshToken);
-    // }
     return accessToken;
-  } 
-  catch (err) {
-    console.error("Erreur lors du refresh token :", err.response?.data || err.message);
+  } catch (err) {
+    console.error("Erreur refresh token:", err.response?.data || err.message);
     authService.clearAccessToken();
     authService.clearRefreshToken();
     return null;
   } finally {
-    // Débloquer le refresh automatique après l'appel
     skipAutoRefresh = false;
   }
-},
+};
+
 
 
   // --- Initialize auth après reload ---
