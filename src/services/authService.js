@@ -217,7 +217,11 @@ refreshAccessToken: async (onInvalidRefresh) => {
   // Si un refresh est déjà en cours, attendre la promesse existante
   if (refreshPromise) {
     console.log("⏸ Refresh déjà en cours → on attend la même promesse");
-    return refreshPromise;
+    return refreshPromise.catch(() => {
+      // Si la promesse précédente a échoué, on la remet à null
+      refreshPromise = null;
+      return null;
+    });
   }
 
   skipAutoRefresh = true;
