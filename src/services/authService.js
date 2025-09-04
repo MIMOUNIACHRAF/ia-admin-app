@@ -206,7 +206,7 @@ refreshAccessToken: async (onInvalidRefresh) => {
     const refreshToken = authService.getRefreshToken();
 
     if (!refreshToken) {
-      console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
+      console.warn("⚠️ Aucun refresh token → logout forcé");
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
@@ -244,10 +244,13 @@ refreshAccessToken: async (onInvalidRefresh) => {
         return accessToken || null;
       } catch (err) {
         console.error("❌ Refresh échoué :", err.response?.data || err.message);
+
+        // 🔹 Logout forcé si refresh invalide
         authService.clearAccessToken();
         authService.clearRefreshToken();
         localStorage.clear();
-        if (onInvalidRefresh) onInvalidRefresh(); // ⚠️ on force le logout/redirection
+        if (onInvalidRefresh) onInvalidRefresh();
+
         return null;
       } finally {
         skipAutoRefresh = false;

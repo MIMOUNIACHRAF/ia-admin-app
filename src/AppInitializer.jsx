@@ -28,7 +28,7 @@ export default function AppInitializer({ children }) {
         console.log("Refresh token présent ?", refreshExists);
 
         if (!refreshExists) {
-          console.log("Refresh token absent → vider tout et rediriger");
+          console.log("Refresh token absent → logout forcé");
           authService.clearAccessToken();
           authService.clearRefreshToken();
           localStorage.clear();
@@ -43,8 +43,7 @@ export default function AppInitializer({ children }) {
             console.log("✅ Refresh réussi, nouvel access token stocké");
             dispatch(setTokens({ access: newAccess }));
           }
-          // Si refresh invalide, logoutAndRedirect est déjà appelé depuis refreshAccessToken
-          return;
+          return; // Si refresh invalide, logoutAndRedirect est déjà appelé
         }
 
         if (access && refreshExists) {
