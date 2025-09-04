@@ -214,17 +214,10 @@ refreshAccessToken: async (onInvalidRefresh) => {
     return null;
   }
 
-  // Forcer la réinitialisation si la précédente promesse a échoué
+  // Si un refresh est déjà en cours, attendre la même promesse
   if (refreshPromise) {
     console.log("⏸ Refresh déjà en cours → on attend la même promesse");
-    return refreshPromise.catch(() => {
-      // Si la promesse précédente a échoué, on la remet à null
-      authService.clearAccessToken();
-      authService.clearRefreshToken();
-      localStorage.clear();
-      refreshPromise = null;
-      return null;
-    });
+    return refreshPromise;
   }
 
   skipAutoRefresh = true;
@@ -251,14 +244,20 @@ refreshAccessToken: async (onInvalidRefresh) => {
       return accessToken || null;
     } catch (err) {
       console.error("❌ Refresh échoué :", err.response?.data || err.message);
+
+      // 🔹 réinitialiser immédiatement la promesse pour débloquer les prochains refresh
+      refreshPromise = null;
+
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
+
       if (onInvalidRefresh) onInvalidRefresh();
       return null;
     } finally {
       skipAutoRefresh = false;
-      refreshPromise = null; // toujours remettre à null pour permettre un prochain refresh
+      // Ne rien remettre ici, déjà remis dans catch si erreur
+      if (refreshPromise) refreshPromise = null;
     }
   })();
 

@@ -30,18 +30,22 @@ export default function AppInitializer({ children }) {
       }
       if (!accessToken) {
         console.log("⏳ Access token absent → tentative de refresh");
-        const newAccess = await authService.refreshAccessToken(logoutAndRedirect);
+        const newAccess = await Promise.race([
+          authService.refreshAccessToken(logoutAndRedirect),
+          new Promise(resolve => setTimeout(() => resolve(null), 5000)) // timeout 5s
+        ]);
 
         if (newAccess) {
           console.log("✅ Refresh réussi, access token stocké");
           dispatch(setTokens({ access: newAccess }));
         } else {
-          console.log("❌ Refresh échoué → logout immédiat");
-          logoutAndRedirect(); // on force le logout ici
+          console.log("❌ Refresh échoué ou timeout → logout immédiat");
+          logoutAndRedirect();
         }
 
         return;
       }
+
 
 
       console.log("✅ Access + refresh token présents → OK");
