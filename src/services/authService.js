@@ -25,7 +25,7 @@ const authService = {
   setRefreshToken: (token) => {
     document.cookie = `refresh_token=${token}; path=/; max-age=${
       7 * 24 * 60 * 60
-    }; secure; samesite=strict`;
+    }; secure; samesite=Lax`;
   },
 
   clearRefreshToken: () => {
