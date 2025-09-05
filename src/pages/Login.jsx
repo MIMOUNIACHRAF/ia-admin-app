@@ -64,52 +64,42 @@ export default function Login() {
 
   // Soumission formulaire
 const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  setIsSubmitting(true);
-
-  try {
-    // Dispatch login via Redux Toolkit
-    const result = await dispatch(login({ email, password })).unwrap();
-
-    // Succès : sauvegarde email + reset erreurs
-    localStorage.setItem("lastEmail", email);
+    setIsSubmitting(true);
     setFormError("");
+    
+    try {
+      const result = await dispatch(login({ email, password })).unwrap();
+      // Succès
+      localStorage.setItem("lastEmail", email);
+      setFormError("");
+    } catch (err) {
+      // Extraire status et message textuel
+      const status = err?.payload?.status || err?.status || null;
+      const detail = err?.payload?.detail || err?.detail || err?.message || "Erreur inconnue";
 
-  } catch (err) {
-    let backendMsg = "Erreur inconnue";
-    let status;
+      let userMessage = "⚠️ Une erreur est survenue";
 
-    if (err?.payload) {
-      // RTK Thunk renvoie payload
-      status = err.payload.status;
-      backendMsg = err.payload.detail || JSON.stringify(err.payload);
-    } else if (err?.status || err?.detail) {
-      // Direct throw depuis authService
-      status = err.status;
-      backendMsg = err.detail || backendMsg;
-    } else if (err?.message) {
-      backendMsg = err.message;
+      if (status === 401) {
+        userMessage = "❌ Email ou mot de passe incorrect";
+        passwordRef.current?.focus();
+      } else if (status === 403) {
+        userMessage = `⛔ ${detail}`;
+        emailRef.current?.focus();
+      } else {
+        userMessage = `⚠️ ${detail}`;
+        emailRef.current?.focus();
+      }
+
+      setFormError(userMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Affichage erreur + focus
-    if (status === 401) {
-      setFormError("❌ Email ou mot de passe incorrect");
-      passwordRef.current?.focus();
-    } else if (status === 403) {
-      setFormError(`⛔ ${backendMsg}`);
-      emailRef.current?.focus();
-    } else {
-      setFormError(`⚠️ ${backendMsg}`);
-      emailRef.current?.focus();
-    }
-
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
+;
 
 
 
