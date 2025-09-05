@@ -82,6 +82,17 @@ export default function Login() {
     console.log(backendMsg);
     console.log(err?.response?.detail);
     const status = err?.response?.status;
+    const status2 = err?.response?.status;
+    const backendMsg2 =
+      err?.response?.data?.detail ||      // DRF: { "detail": "message" }
+      (typeof err?.response?.data === "string" && err.response.data) || // si backend renvoie juste string
+      err?.response?.statusText ||         // HTTP status text
+      err?.message ||                      // message JS/Axios
+      "Erreur inconnue";
+
+    console.log("status:", status2);
+    console.log("backendMsg:", backendMsg2);
+
 
     if (backendMsg) {
       if (status === 403) {
