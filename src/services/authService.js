@@ -81,19 +81,35 @@ const authService = {
 
   // --- login/logout (front) ---
   login: async (credentials) => {
-    const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
-    const access = response.headers["x-access-token"] || response.data?.access;
-    if (access) authService.setAccessToken(access);
+    try {
+      const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
 
-    // backend may return refresh in body
-    if (response.data?.refresh) {
-      authService.setRefreshToken(response.data.refresh);
+      // Récupérer access token : header ou body
+      const accessToken = response.headers['x-access-token'] || response.data?.access;
+      if (accessToken) authService.setAccessToken(accessToken);
+
+      // Récupérer refresh token côté backend si présent
+      const refreshToken = response.data?.refresh;
+      if (refreshToken) authService.setRefreshToken(refreshToken);
+
+      // Retourner payload propre sans refresh token
+      const payload = { ...response.data };
+      if (payload.refresh) delete payload.refresh;
+
+      return payload;
+    } catch (err) {
+      // Gestion robuste des erreurs Axios + JS
+      if (err.response) {
+        throw {
+          status: err.response.status,
+          detail: err.response.data?.detail || JSON.stringify(err.response.data),
+        };
+      }
+      throw {
+        status: null,
+        detail: err.message || 'Login failed',
+      };
     }
-
-    // return payload (without refresh token if existed)
-    const data = { ...response.data };
-    if (data.refresh) delete data.refresh;
-    return data;
   },
 
   logout: async () => {

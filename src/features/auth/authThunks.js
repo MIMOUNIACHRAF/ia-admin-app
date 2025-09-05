@@ -6,19 +6,37 @@ import authService from '../../services/authService';
  * --- Login ---
  * Appelle le backend et stocke access token en mémoire
  */
+// src/features/auth/authThunks.js
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import authService from '../../services/authService';
+
+/**
+ * --- Login ---
+ * Appelle le backend et stocke access token en mémoire
+ * Retourne payload sans refresh token
+ * Propagation complète des erreurs avec status + detail
+ */
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
       const data = await authService.login(credentials);
-      // access token mis en mémoire via authService
-      return data;
+      return data; // payload propre, sans refresh token
     } catch (err) {
-      return rejectWithValue(err?.message || 'Login failed');
+      // Gestion complète des erreurs Axios + JS
+      const payload = err.response
+        ? {
+            status: err.response.status,
+            detail: err.response.data?.detail || JSON.stringify(err.response.data),
+          }
+        : {
+            status: err.status ?? null,
+            detail: err.detail || err.message || 'Login failed',
+          };
+      return rejectWithValue(payload);
     }
   }
 );
-
 /**
  * --- Logout ---
  * Idempotent, supprime access + refresh + Redux state
@@ -30,7 +48,10 @@ export const logout = createAsyncThunk(
       await authService.performLocalLogout();
       return null;
     } catch (err) {
-      return rejectWithValue(err?.message || 'Logout failed');
+      return rejectWithValue({
+        status: err.response?.status || null,
+        detail: err.response?.data?.detail || err.message,
+      });
     }
   }
 );
@@ -44,15 +65,15 @@ export const refreshToken = createAsyncThunk(
   'auth/refresh',
   async (_, { rejectWithValue }) => {
     try {
-      const access = await authService.refreshAccessToken(); // single-flight interne
+      const access = await authService.refreshAccessToken();
       if (!access) {
         await authService.performLocalLogout();
-        return rejectWithValue('Refresh token absent ou expiré');
+        return rejectWithValue({ status: 403, detail: 'Refresh token absent ou expiré' });
       }
       return { access };
     } catch (err) {
       await authService.performLocalLogout();
-      return rejectWithValue(err?.message || 'Token refresh failed');
+      return rejectWithValue({ status: err.response?.status || null, detail: err.message || 'Token refresh failed' });
     }
   }
 );

@@ -82,27 +82,15 @@ const handleSubmit = async (e) => {
     let backendMsg = "Erreur inconnue";
     let status;
 
-    // Cas Axios avec response
-    if (err?.response) {
-      status = err.response.status;
-
-      // Vérifie si detail existe côté backend DRF
-      if (err.response.data?.detail) {
-        backendMsg = err.response.data.detail;
-      } else if (err.response.data) {
-        // fallback JSON brut
-        backendMsg = JSON.stringify(err.response.data);
-      } else if (err.response.statusText) {
-        backendMsg = err.response.statusText;
-      }
-
-    } else if (err?.payload) {
-      // Cas RTK / thunk qui renvoie payload directement
-      status = err.payload?.status;
-      backendMsg = err.payload?.detail || JSON.stringify(err.payload);
-
+    if (err?.payload) {
+      // RTK Thunk renvoie payload
+      status = err.payload.status;
+      backendMsg = err.payload.detail || JSON.stringify(err.payload);
+    } else if (err?.status || err?.detail) {
+      // Direct throw depuis authService
+      status = err.status;
+      backendMsg = err.detail || backendMsg;
     } else if (err?.message) {
-      // Autres erreurs JS
       backendMsg = err.message;
     }
 
@@ -122,6 +110,7 @@ const handleSubmit = async (e) => {
     setIsSubmitting(false);
   }
 };
+
 
 
 
