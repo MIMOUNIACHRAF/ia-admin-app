@@ -34,7 +34,8 @@ export default function AppInitializer({ children }) {
 
         if (!refreshToken) {
           // logout immédiat si aucun refresh
-          authService.performLocalLogout(logoutAndRedirect);
+          if (!skipLogoutOnLoginError) performLocalLogout(logoutAndRedirect);
+          // authService.performLocalLogout(logoutAndRedirect);
           return;
         }
 
