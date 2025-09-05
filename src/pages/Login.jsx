@@ -65,53 +65,52 @@ export default function Login() {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
+
     try {
-      setIsSubmitting(true);
       const result = await dispatch(login({ email, password })).unwrap();
 
       // Succès : sauvegarde email + reset erreurs
       localStorage.setItem("lastEmail", email);
       setFormError("");
     } catch (err) {
-      // Vérifier si c'est une réponse HTTP du backend
-      if (err.response) {
-        const { status, data } = err.response;
-
-        if (status === 401) {
-          // Credentials invalides (JWT / mauvais mot de passe)
-          setFormError("❌ Email ou mot de passe incorrect");
-          passwordRef.current?.focus();
-        } else if (status === 403) {
-          // Trop de tentatives de connexion (Axes)
-          setFormError(`⛔ ${data.detail || "Trop de tentatives. Veuillez réessayer plus tard."}`);
-        } else if (data?.detail) {
-          // Autre erreur renvoyée par le backend
-          setFormError(`⚠️ ${data.detail}`);
-        } else {
-          setFormError("⚠️ Erreur lors de la connexion");
-        }
-      } else if (err.message) {
-        // Erreur JS / réseau
-        setFormError(`⚠️ ${err.message}`);
-      } else {
-        setFormError("⚠️ Erreur lors de la connexion");
+      // Priorité aux messages renvoyés par le backend
+      const backendMsg = err?.response?.data?.detail;
+      if (backendMsg) {
+        setFormError(
+          err.response.status === 403
+            ? `⛔ ${backendMsg}` // Trop de tentatives
+            : `⚠️ ${backendMsg}` // Autre message
+        );
+        return;
       }
+
+      // 401 = credentials invalides
+      if (err?.response?.status === 401) {
+        setFormError("❌ Email ou mot de passe incorrect");
+        passwordRef.current?.focus();
+        return;
+      }
+
+      // Erreur réseau ou JS
+      if (err?.message) {
+        setFormError(`⚠️ ${err.message}`);
+        return;
+      }
+
+      // fallback
+      setFormError("⚠️ Erreur lors de la connexion");
     } finally {
       setIsSubmitting(false);
     }
-};
-
-
-
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="text-center text-3xl font-extrabold text-gray-900">
-            Connexion à votre compte
-          </h1>
-        </div>
+        <h1 className="text-center text-3xl font-extrabold text-gray-900">
+          Connexion à votre compte
+        </h1>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
           <div className="rounded-md shadow-sm -space-y-px">
@@ -126,9 +125,9 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Email"
                 aria-invalid={!!formError}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
 
@@ -143,9 +142,9 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Mot de passe"
                 aria-invalid={!!formError}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
             </div>
           </div>
