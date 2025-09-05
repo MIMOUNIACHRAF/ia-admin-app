@@ -30,6 +30,7 @@ export const initializeAxios = (store) => {
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
     timeout: 5000,
+    
   });
 
   // helper lecture cookie sans logger le token complet
