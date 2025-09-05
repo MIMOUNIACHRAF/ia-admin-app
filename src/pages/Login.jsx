@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { login } from "../features/auth/authThunks";
@@ -11,15 +11,12 @@ import {
 } from "../features/auth/authSelectors";
 import authService from "../services/authService";
 
-/**
- * Login page - Production-ready, UX optimisée
- * - Bloque temporairement le refresh automatique sur login
- * - Validation frontend simple + messages backend
- * - Feedback visuel sur loading/erreur
- */
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +27,13 @@ export default function Login() {
   const backendError = useSelector(selectAuthError);
   const isAuthenticated = useSelector(selectIsAuthenticated);
 
-  // Bloque refresh automatique sur login
+  // Charger dernier email depuis localStorage
+  useEffect(() => {
+    const lastEmail = localStorage.getItem("lastEmail") || "";
+    if (lastEmail) setEmail(lastEmail);
+  }, []);
+
+  // Bloquer refresh automatique sur login
   useEffect(() => {
     authService.setSkipAutoRefresh?.(true);
     dispatch(clearError());
@@ -42,6 +45,13 @@ export default function Login() {
     authService.setSkipAutoRefresh?.(false);
     navigate("/", { replace: true });
   }, [isAuthenticated, navigate]);
+
+  // Focus automatique sur l'input erroné
+  useEffect(() => {
+    if (!formError) return;
+    if (formError.toLowerCase().includes("email")) emailRef.current?.focus();
+    else if (formError.toLowerCase().includes("mot de passe")) passwordRef.current?.focus();
+  }, [formError]);
 
   // --- Validation formulaire ---
   const validateForm = useCallback(() => {
@@ -61,7 +71,7 @@ export default function Login() {
     try {
       setIsSubmitting(true);
       await dispatch(login({ email, password })).unwrap();
-      // redirection gérée par useEffect(isAuthenticated)
+      localStorage.setItem("lastEmail", email); // sauver email pour prochaines visites
     } catch (err) {
       setFormError(err?.message || "Erreur lors de la connexion");
     } finally {
@@ -86,6 +96,7 @@ export default function Login() {
                 id="email"
                 name="email"
                 type="email"
+                ref={emailRef}
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -103,6 +114,7 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
+                ref={passwordRef}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -117,7 +129,7 @@ export default function Login() {
 
           {/* Erreurs */}
           {(formError || backendError) && (
-            <div className="text-red-500 text-sm" role="alert">
+            <div className="text-red-500 text-sm mt-2" role="alert">
               {formError || backendError}
             </div>
           )}
@@ -129,6 +141,12 @@ export default function Login() {
               ${isLoading || isSubmitting ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}
               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
           >
+            {(isLoading || isSubmitting) && (
+              <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+            )}
             {(isLoading || isSubmitting) ? "Connexion..." : "Se connecter"}
           </button>
         </form>
