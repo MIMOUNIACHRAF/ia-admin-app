@@ -71,6 +71,7 @@ const handleSubmit = async (e) => {
   setIsSubmitting(true);
 
   try {
+    // Dispatch login via Redux Toolkit
     const result = await dispatch(login({ email, password })).unwrap();
 
     // Succès : sauvegarde email + reset erreurs
@@ -81,26 +82,31 @@ const handleSubmit = async (e) => {
     let backendMsg = "Erreur inconnue";
     let status;
 
-    // Si la réponse Axios existe
+    // Cas Axios avec response
     if (err?.response) {
       status = err.response.status;
 
-      // Priorité : detail côté DRF
-      backendMsg =
-        err.response.data?.detail ||
-        JSON.stringify(err.response.data) || // fallback JSON brut
-        err.response.statusText ||
-        "Erreur serveur inconnue";
+      // Vérifie si detail existe côté backend DRF
+      if (err.response.data?.detail) {
+        backendMsg = err.response.data.detail;
+      } else if (err.response.data) {
+        // fallback JSON brut
+        backendMsg = JSON.stringify(err.response.data);
+      } else if (err.response.statusText) {
+        backendMsg = err.response.statusText;
+      }
 
-    } else if (err?.request) {
-      // Requête envoyée mais pas de réponse (CORS / réseau)
-      backendMsg = "⚠️ Pas de réponse du serveur. Vérifiez votre connexion ou CORS.";
+    } else if (err?.payload) {
+      // Cas RTK / thunk qui renvoie payload directement
+      status = err.payload?.status;
+      backendMsg = err.payload?.detail || JSON.stringify(err.payload);
+
     } else if (err?.message) {
-      // Erreur JS / Axios
+      // Autres erreurs JS
       backendMsg = err.message;
     }
 
-    // Gestion focus automatique selon type d'erreur
+    // Affichage erreur + focus
     if (status === 401) {
       setFormError("❌ Email ou mot de passe incorrect");
       passwordRef.current?.focus();
@@ -109,7 +115,6 @@ const handleSubmit = async (e) => {
       emailRef.current?.focus();
     } else {
       setFormError(`⚠️ ${backendMsg}`);
-      // Optionnel : focus sur email par défaut
       emailRef.current?.focus();
     }
 
