@@ -29,8 +29,8 @@ export const initializeAxios = (store) => {
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
-    timeout: 5000,
-    
+    timeout: 15000,
+
   });
 
   // helper lecture cookie sans logger le token complet
@@ -67,62 +67,61 @@ export const initializeAxios = (store) => {
   );
 
   // Response interceptor : gère 401 -> refresh -> retry (single-flight via authService)
-  axiosInstance.interceptors.response.use(
-    (response) => {
-      const newAccess = response.headers?.["x-new-access-token"];
-      if (newAccess) {
-        // Mise à jour access sans toucher au cookie refresh
-        authService._internalSetAccessToken(newAccess);
-        if (store && store.dispatch) store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
-      }
-      return response;
-    },
-    async (error) => {
-      const originalRequest = error.config;
-      if (!originalRequest) return Promise.reject(error);
-
-      // On tente refresh si 401 et pas déjà retrié
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-
-        // si pas de refresh -> logout
-        if (!authService.isRefreshTokenPresent()) {
-          if (store && store.dispatch) store.dispatch({ type: "auth/logout" });
-          authService.performLocalLogout(() => {
-            // navigation simple : remplacer URL
-            window.location.replace("/login");
-          });
-          return Promise.reject(error);
-        }
-
-        try {
-          // callback si refresh invalide : effectue local logout + dispatch
-          const newAccess = await authService.refreshAccessToken(() => {
-            if (store && store.dispatch) store.dispatch({ type: "auth/logout" });
-            authService.performLocalLogout(() => window.location.replace("/login"));
-          });
-
-          if (!newAccess) {
-            return Promise.reject(error);
-          }
-
-          // Réessayer la requête initiale avec le nouvel access
-          originalRequest.headers = originalRequest.headers || {};
-          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
-          if (store && store.dispatch) store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
-
-          return axiosInstance(originalRequest);
-        } catch (err) {
-          // si erreur final -> logout
-          if (store && store.dispatch) store.dispatch({ type: "auth/logout" });
-          authService.performLocalLogout(() => window.location.replace("/login"));
-          return Promise.reject(err);
-        }
-      }
-
-      return Promise.reject(error);
+ // Response interceptor
+axiosInstance.interceptors.response.use(
+  (response) => {
+    const newAccess = response.headers?.["x-new-access-token"];
+    if (newAccess) {
+      authService._internalSetAccessToken(newAccess);
+      if (store?.dispatch) store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
     }
-  );
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    if (!originalRequest) return Promise.reject(error);
+
+    const status = error.response?.status;
+    const url = originalRequest.url || "";
+
+    // ⚠️ Si c'est /login, on ne fait jamais logout automatique
+    if (url.endsWith(API_ENDPOINTS.LOGIN)) {
+      return Promise.reject(error); // laisser Redux/login gérer l'erreur
+    }
+
+    // 401 sur autres endpoints → refresh / logout
+    if (status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      if (!authService.isRefreshTokenPresent()) {
+        if (store?.dispatch) store.dispatch({ type: "auth/logout" });
+        authService.performLocalLogout(() => window.location.replace("/login"));
+        return Promise.reject(error);
+      }
+
+      try {
+        const newAccess = await authService.refreshAccessToken(() => {
+          if (store?.dispatch) store.dispatch({ type: "auth/logout" });
+          authService.performLocalLogout(() => window.location.replace("/login"));
+        });
+
+        if (!newAccess) return Promise.reject(error);
+
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        if (store?.dispatch) store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
+
+        return axiosInstance(originalRequest);
+      } catch (err) {
+        if (store?.dispatch) store.dispatch({ type: "auth/logout" });
+        authService.performLocalLogout(() => window.location.replace("/login"));
+        return Promise.reject(err);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
   // expose instance as default api
   api = axiosInstance;
