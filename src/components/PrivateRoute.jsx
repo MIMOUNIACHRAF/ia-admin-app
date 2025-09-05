@@ -1,63 +1,79 @@
+// src/routes/PrivateRoute.jsx
 import { Outlet, Navigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { selectAccessToken } from "../features/auth/authSelectors";
 import authService from "../services/authService";
-import { setTokens, logout } from "../features/auth/authSlice";
+import { useEffect, useState } from "react";
 
-const useAuthCheck = () => {
-  const accessToken = useSelector(selectAccessToken);
-  const dispatch = useDispatch();
-  const [isChecking, setIsChecking] = useState(true);
+/**
+ * PrivateRoute : garde l'accès si token est valide
+ * - utilise authService.refreshAccessToken si nécessaire
+ * - simplifié : relies sur isValid after refresh attempt
+ */
+
+export function PrivateRoute() {
+  const reduxAccess = useSelector(selectAccessToken);
+  const [checking, setChecking] = useState(true);
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
-    const checkToken = async () => {
+    let mounted = true;
+    const check = async () => {
       try {
-        let token = accessToken || authService.getAccessToken();
-
+        const token = reduxAccess || authService.getAccessToken();
         if (token) {
-          // Access token présent → OK
-          dispatch(setTokens({ access: token }));
-          setIsValid(true);
+          if (mounted) setIsValid(true);
         } else {
-          // Essayer de rafraîchir l'access token via backend
-          const newAccess = await authService.refreshAccessToken();
-          if (newAccess) {
-            dispatch(setTokens({ access: newAccess }));
-            setIsValid(true);
-          } else {
-            // Refresh token absent / expiré
-            await authService.logout();
-            dispatch(logout());
-            setIsValid(false);
-          }
+          // try refresh once
+          const newAccess = await authService.refreshAccessToken(() => {
+            // callback: redirect handled in AppInitializer/global logout
+          });
+          if (newAccess && mounted) setIsValid(true);
         }
       } catch {
-        await authService.logout();
-        dispatch(logout());
-        setIsValid(false);
+        if (mounted) setIsValid(false);
       } finally {
-        setIsChecking(false);
+        if (mounted) setChecking(false);
       }
     };
+    check();
+    return () => {
+      mounted = false;
+    };
+  }, [reduxAccess]);
 
-    checkToken();
-  }, [accessToken, dispatch]);
-
-  return { isChecking, isValid };
-};
-
-// PrivateRoute : accès uniquement si authentifié
-export function PrivateRoute() {
-  const { isChecking, isValid } = useAuthCheck();
-  if (isChecking) return <div>Loading...</div>;
+  if (checking) return <div>Loading...</div>;
   return isValid ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
-// PublicRoute : accès uniquement si non authentifié
 export function PublicRoute() {
-  const { isChecking, isValid } = useAuthCheck();
-  if (isChecking) return <div>Loading...</div>;
+  const reduxAccess = useSelector(selectAccessToken);
+  const [checking, setChecking] = useState(true);
+  const [isValid, setIsValid] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      try {
+        const token = reduxAccess || authService.getAccessToken();
+        if (token) {
+          if (mounted) setIsValid(true);
+        } else {
+          const newAccess = await authService.refreshAccessToken(() => {});
+          if (newAccess && mounted) setIsValid(true);
+        }
+      } catch {
+        if (mounted) setIsValid(false);
+      } finally {
+        if (mounted) setChecking(false);
+      }
+    };
+    check();
+    return () => {
+      mounted = false;
+    };
+  }, [reduxAccess]);
+
+  if (checking) return <div>Loading...</div>;
   return isValid ? <Navigate to="/" replace /> : <Outlet />;
 }

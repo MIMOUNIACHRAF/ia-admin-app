@@ -1,272 +1,210 @@
-import api from '../api/axiosInstance';
-import { API_ENDPOINTS } from '../api/config';
+// src/services/authService.js
+import api from "../api/axiosInstance";
+import { API_ENDPOINTS } from "../api/config";
+
+/**
+ * authService centralisé
+ * - single-flight refresh
+ * - stockage access en mémoire + localStorage
+ * - refresh token uniquement cookie (get/set/clear manipulant document.cookie)
+ *
+ * Méthodes publiques :
+ * - setAccessToken / getAccessToken / clearAccessToken
+ * - setRefreshToken / getRefreshToken / clearRefreshToken / isRefreshTokenPresent
+ * - refreshAccessToken(onInvalidRefresh)
+ * - login(credentials) / logout()
+ * - performLocalLogout(callback)
+ */
 
 let accessTokenMemory = null;
-let skipAutoRefresh = false;
-
 let refreshPromise = null;
+
+/* ---------- helpers cookie (minimaux) ---------- */
+const COOKIE_NAME = "refresh_token";
+
+function readCookie(name) {
+  if (typeof document === "undefined") return null;
+  const raw = document.cookie || "";
+  return (
+    raw
+      .split(";")
+      .map((c) => c.trim())
+      .find((c) => c.startsWith(`${name}=`))
+      ?.split("=")[1] || null
+  );
+}
+
+function setCookie(name, value, maxAgeSeconds = 7 * 24 * 60 * 60) {
+  if (typeof document === "undefined") return;
+  // SameSite=Lax, Secure si sur https (obligatoire en prod)
+  const secure = location?.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+}
+
+function clearCookie(name) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; path=/; max-age=0`;
+}
+
+/* ---------- authService ---------- */
 const authService = {
-  // --- Access Token ---
-  setAccessToken: (token) => {
-    accessTokenMemory = token;
-    localStorage.setItem("access_token", token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  // --- Access token (mémoire + localStorage) ---
+  _internalSetAccessToken: (token) => {
+    accessTokenMemory = token || null;
+    if (token) {
+      localStorage.setItem("access_token", token);
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      localStorage.removeItem("access_token");
+      delete api.defaults.headers.common["Authorization"];
+    }
   },
 
-  getAccessToken: () =>
-    accessTokenMemory || localStorage.getItem("access_token"),
+  setAccessToken: (token) => authService._internalSetAccessToken(token),
 
-  clearAccessToken: () => {
-    accessTokenMemory = null;
-    localStorage.removeItem("access_token");
-    delete api.defaults.headers.common["Authorization"];
-  },
+  getAccessToken: () => accessTokenMemory || localStorage.getItem("access_token") || null,
 
-  // --- Refresh Token (uniquement cookie) ---
+  clearAccessToken: () => authService._internalSetAccessToken(null),
+
+  // --- Refresh token (cookie only) ---
   setRefreshToken: (token) => {
-    document.cookie = `refresh_token=${token}; path=/; max-age=${
-      7 * 24 * 60 * 60
-    }; secure; samesite=Lax`;
+    if (!token) return;
+    // ne pas logguer le refresh complet en prod
+    setCookie(COOKIE_NAME, token);
   },
 
-  clearRefreshToken: () => {
-    document.cookie = "refresh_token=; path=/; max-age=0";
-  },
+  getRefreshToken: () => readCookie(COOKIE_NAME),
 
-  getRefreshToken: () => {
-    return (
-      document.cookie
-        .split(";")
-        .map((c) => c.trim())
-        .find((c) => c.startsWith("refresh_token="))
-        ?.split("=")[1] || null
-    );
-  },
+  clearRefreshToken: () => clearCookie(COOKIE_NAME),
 
   isRefreshTokenPresent: () => !!authService.getRefreshToken(),
 
-  setSkipAutoRefresh: (value) => {
-    skipAutoRefresh = value;
-  },
-
-  // --- Login ---
+  // --- login/logout (front) ---
   login: async (credentials) => {
     const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
-
-    const access =
-      response.headers["x-access-token"] || response.data.access;
+    const access = response.headers["x-access-token"] || response.data?.access;
     if (access) authService.setAccessToken(access);
 
+    // backend may return refresh in body
     if (response.data?.refresh) {
       authService.setRefreshToken(response.data.refresh);
-      delete response.data.refresh;
     }
 
-    return response.data;
+    // return payload (without refresh token if existed)
+    const data = { ...response.data };
+    if (data.refresh) delete data.refresh;
+    return data;
   },
 
-  // --- Logout ---
   logout: async () => {
     try {
-      // Désactiver temporairement le refresh automatique
-      skipAutoRefresh = true;
-
-      const accessToken = authService.getAccessToken();
       const refreshToken = authService.getRefreshToken();
-
-      // Envoyer la requête logout au backend si refresh token présent
+      const access = authService.getAccessToken();
+      // Attempt backend logout if refresh exists
       if (refreshToken) {
         await api.post(
           API_ENDPOINTS.LOGOUT,
-          {}, // corps vide
+          {},
           {
             headers: {
-              "Authorization": accessToken ? `Bearer ${accessToken}` : "",
-              "X-Refresh-Token": refreshToken
+              Authorization: access ? `Bearer ${access}` : undefined,
+              // Some backends expect refresh in body instead, adapt if needed
+              "X-Refresh-Token": refreshToken,
             },
           }
         );
       }
-
-      // Nettoyer tous les tokens côté front
-      authService.clearAccessToken();
-      authService.clearRefreshToken();
-      localStorage.clear();
     } catch (err) {
-      console.error(
-        "Erreur logout :",
-        err.response?.data || err.message
-      );
+      // ignore network/logout errors on client-side logout
+      console.error("⚠️ logout error:", err?.response?.data || err?.message);
     } finally {
-      // Réactiver le refresh automatique
-      skipAutoRefresh = false;
+      // cleanup local
+      authService.performLocalLogout();
     }
-},
+  },
 
-
-  // --- Refresh Access Token ---
-//  refreshAccessToken: async () => {
-//   if (skipAutoRefresh) return null;
-
-//   const refreshToken = authService.getRefreshToken();
-//   console.log("Refresh token: service ", refreshToken);
-//   if (!refreshToken) {
-//     authService.clearAccessToken();
-//     return null;
-//   }
-
-//   try {
-//     // Bloquer le refresh automatique pendant cet appel
-//     skipAutoRefresh = true;
-
-//     const response = await api.post(
-//       API_ENDPOINTS.REFRESH_TOKEN,
-//       {},
-//       {
-//         headers: {
-//           "X-Refresh-Token": refreshToken,
-//         },
-//       }
-//     );
-
-//     const accessToken = response.data?.access || response.headers["x-new-access-token"];
-//     console.log("New access token:", accessToken);
-//     if (accessToken) authService.setAccessToken(accessToken);
-//     return accessToken;
-//   } 
-//   catch (err) {
-//     console.error("Erreur lors du refresh token :", err.response?.data || err.message);
-//     authService.clearAccessToken();
-//     authService.clearRefreshToken();
-//     return null;
-//   } finally {
-//     // Débloquer le refresh automatique après l'appel
-//     skipAutoRefresh = false;
-//   }
-// },
-// refreshAccessToken: async () => {
-//   if (skipAutoRefresh) {
-//     console.log("⏸ Refresh bloqué temporairement (skipAutoRefresh = true)");
-//     return null;
-//   }
-
-//   const refreshToken = authService.getRefreshToken();
-//   if (!refreshToken) {
-//     console.warn("⚠️ Aucun refresh token → impossible de rafraîchir");
-//     authService.clearAccessToken();
-//     return null;
-//   }
-
-//   try {
-//     // Bloquer les refresh concurrents pendant cet appel
-//     skipAutoRefresh = true;
-//     console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
-
-//     const response = await api.post(
-//       API_ENDPOINTS.REFRESH_TOKEN,
-//       {},
-//       { headers: { "X-Refresh-Token": refreshToken } }
-//     );
-
-//     // Extraire le nouvel access token
-//     const accessToken =
-//       response.data?.access || response.headers["x-new-access-token"];
-
-//     if (accessToken) {
-//       authService.setAccessToken(accessToken);
-//       console.log("✅ Nouveau access token reçu:", accessToken);
-//     } else {
-//       console.warn("⚠️ Aucun access token reçu dans la réponse du refresh");
-//     }
-
-//     // Mettre à jour le refresh token si un nouveau est fourni
-//     if (response.data?.refresh) {
-//       authService.setRefreshToken(response.data.refresh);
-//       console.log("♻️ Nouveau refresh token mis à jour");
-//       delete response.data.refresh;
-//     }
-
-//     console.log("↩️ Valeur retournée par refreshAccessToken:", accessToken || null);
-//     return accessToken || null;
-//   } catch (err) {
-//     console.error(
-//       "❌ Erreur lors du refresh token :",
-//       err.response?.data || err.message
-//     );
-//     authService.clearAccessToken();
-//     authService.clearRefreshToken();
-//     return null;
-//   } finally {
-//     // Débloquer le refresh automatique après l'appel
-//     skipAutoRefresh = false;
-//   }
-// },
-
-refreshAccessToken: async (onInvalidRefresh) => {
-  const refreshToken = authService.getRefreshToken();
-
-  if (!refreshToken) {
-    console.warn("⚠️ Aucun refresh token → logout forcé");
-    authService.clearAccessToken();
-    authService.clearRefreshToken();
-    localStorage.clear();
-    if (onInvalidRefresh) onInvalidRefresh();
-    return null;
-  }
-
-  // Si un refresh est déjà en cours, attendre la même promesse
-  if (refreshPromise) {
-    console.log("⏸ Refresh déjà en cours → on attend la même promesse");
-    return refreshPromise;
-  }
-
-  skipAutoRefresh = true;
-  refreshPromise = (async () => {
+  // Centralise le nettoyage et navigation redirection
+  performLocalLogout: (callback) => {
     try {
-      console.log("🔄 Tentative de refresh avec refresh_token:", refreshToken);
-      const response = await api.post(
-        API_ENDPOINTS.REFRESH_TOKEN,
-        {},
-        { headers: { "X-Refresh-Token": refreshToken } }
-      );
-
-      const accessToken = response.data?.access || response.headers["x-new-access-token"];
-      if (accessToken) {
-        authService.setAccessToken(accessToken);
-        console.log("✅ Nouveau access token reçu");
-      }
-
-      if (response.data?.refresh) {
-        authService.setRefreshToken(response.data.refresh);
-        console.log("♻️ Nouveau refresh token mis à jour");
-      }
-
-      return accessToken || null;
-    } catch (err) {
-      console.error("❌ Refresh échoué :", err.response?.data || err.message);
-
-      // 🔹 réinitialiser immédiatement la promesse pour débloquer les prochains refresh
-      refreshPromise = null;
-
+      // idempotent cleanup
       authService.clearAccessToken();
       authService.clearRefreshToken();
       localStorage.clear();
-
-      if (onInvalidRefresh) onInvalidRefresh();
-      return null;
     } finally {
-      skipAutoRefresh = false;
-      // Ne rien remettre ici, déjà remis dans catch si erreur
-      if (refreshPromise) refreshPromise = null;
+      if (typeof callback === "function") {
+        try {
+          callback();
+        } catch (e) {
+          // ignore callback errors
+          console.error("⚠️ logout callback error", e);
+        }
+      }
     }
-  })();
+  },
 
-  return refreshPromise;
-},
+  /**
+   * refreshAccessToken
+   * - single-flight: si refreshPromise existe on la retourne
+   * - retourne la nouvelle access token ou null
+   * - onInvalidRefresh() est appelé si le refresh échoue (ex: 401)
+   */
+  refreshAccessToken: async (onInvalidRefresh) => {
+    const refreshToken = authService.getRefreshToken();
 
+    if (!refreshToken) {
+      // pas de refresh possible -> logout immédiat
+      authService.performLocalLogout(onInvalidRefresh);
+      return null;
+    }
 
+    // Si un refresh est déjà en cours, retourne la promesse en cours.
+    if (refreshPromise) {
+      // ATTENTION: ne pas rejeter ni modifier refreshPromise ici, laisser l'appelant attendre.
+      return refreshPromise;
+    }
 
-  // --- Initialize auth après reload ---
+    // Démarrer la promesse de refresh (single-flight)
+    refreshPromise = (async () => {
+      try {
+        // Respecter le format attendu par ton backend : j'envoie le refresh dans le body (SimpleJWT)
+        const response = await api.post(API_ENDPOINTS.REFRESH_TOKEN, {
+          refresh: refreshToken,
+        });
+
+        const accessToken = response.data?.access || response.headers?.["x-new-access-token"];
+        if (accessToken) {
+          // met à jour l'access en mémoire + localStorage + header
+          authService.setAccessToken(accessToken);
+        }
+
+        // Mettre à jour le refresh si le backend en renvoie un nouveau
+        if (response.data?.refresh) {
+          authService.setRefreshToken(response.data.refresh);
+        }
+
+        return accessToken || null;
+      } catch (err) {
+        // si erreur (401/403) -> cleanup et callback logout
+        const status = err?.response?.status;
+        console.error("❌ refreshAccessToken failed:", status || err?.message);
+
+        // Remettre à null la promesse avant le logout pour éviter le blocage
+        refreshPromise = null;
+
+        // Nettoyage local et callback
+        authService.performLocalLogout(onInvalidRefresh);
+
+        return null;
+      } finally {
+        // S'assurer que refreshPromise est null pour prochains appels
+        refreshPromise = null;
+      }
+    })();
+
+    return refreshPromise;
+  },
+
+  // Utility: initializeAuth utilisé par AppInitializer
   initializeAuth: async () => {
     const access = authService.getAccessToken();
     if (access) return { access };
@@ -278,10 +216,10 @@ refreshAccessToken: async (onInvalidRefresh) => {
     return newAccess ? { access: newAccess } : null;
   },
 
-  // --- Get User Data ---
+  // getUserData example
   getUserData: async () => {
-    const response = await api.get(API_ENDPOINTS.USER);
-    return response.data;
+    const res = await api.get(API_ENDPOINTS.USER);
+    return res.data;
   },
 };
 
