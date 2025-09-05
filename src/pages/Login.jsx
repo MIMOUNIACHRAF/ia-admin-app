@@ -68,22 +68,23 @@ export default function Login() {
       try {
         setIsSubmitting(true);
         const result = await dispatch(login({ email, password })).unwrap();
-        
+
         // succès : sauvegarder email et reset erreur
         localStorage.setItem("lastEmail", email);
         setFormError("");
       } catch (err) {
-        // --- Gestion détaillée des erreurs ---
         if (err.response) {
-          // Erreur venant du backend
           const status = err.response.status;
           const data = err.response.data;
 
           if (status === 401) {
-            // Login invalide
+            // Credentials invalides
             setFormError("❌ Email ou mot de passe incorrect");
+          } else if (status === 403) {
+            // Interdiction (ex: trop de tentatives)
+            setFormError(`⛔ ${data.detail || "Accès refusé"}`);
           } else if (data?.detail) {
-            // Autre message backend
+            // Autre message du backend
             setFormError(`⚠️ ${data.detail}`);
           } else {
             setFormError("⚠️ Erreur lors de la connexion");
@@ -97,7 +98,8 @@ export default function Login() {
       } finally {
         setIsSubmitting(false);
       }
-  };
+};
+
 
 
   return (
