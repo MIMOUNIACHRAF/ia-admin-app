@@ -79,6 +79,8 @@ export default function Login() {
   } catch (err) {
     // --- 1. Message du backend (détail ou trop de tentatives) ---
     const backendMsg = err?.response?.data?.detail;
+    console.log(backendMsg);
+    console.log(err?.response?.detail);
     const status = err?.response?.status;
 
     if (backendMsg) {
