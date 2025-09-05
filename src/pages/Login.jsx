@@ -63,48 +63,52 @@ export default function Login() {
   }, [email, password]);
 
   // Soumission formulaire
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
+  setFormError(""); // reset avant soumission
 
-    try {
-      const result = await dispatch(login({ email, password })).unwrap();
-      // Succès : sauvegarde email + reset erreurs
-      localStorage.setItem("lastEmail", email);
-      setFormError("");
-    } catch (err) {
-      // Gestion prioritaire des messages backend
-      const backendMsg = err?.response?.data?.detail;
-      if (backendMsg) {
-        setFormError(
-          err.response.status === 403
-            ? `⛔ ${backendMsg}` // Trop de tentatives
-            : `⚠️ ${backendMsg}` // Autre message
-        );
-        return;
-      }
+  try {
+    const result = await dispatch(login({ email, password })).unwrap();
 
-      // 401 = credentials invalides
-      if (err?.response?.status === 401) {
+    // Succès : sauvegarde du dernier email + reset erreurs
+    localStorage.setItem("lastEmail", email);
+    setFormError("");
+  } catch (err) {
+    // --- 1. Message du backend (détail ou trop de tentatives) ---
+    const backendMsg = err?.response?.data?.detail;
+    const status = err?.response?.status;
+
+    if (backendMsg) {
+      if (status === 403) {
+        // Trop de tentatives → afficher message exact du backend
+        setFormError(`⛔ ${backendMsg}`);
+      } else if (status === 401) {
+        // Credentials invalides
         setFormError("❌ Email ou mot de passe incorrect");
         passwordRef.current?.focus();
-        return;
+      } else {
+        // Autres erreurs HTTP
+        setFormError(`⚠️ ${backendMsg}`);
       }
-
-      // Erreur réseau ou JS
-      if (err?.message) {
-        setFormError(`⚠️ ${err.message}`);
-        return;
-      }
-
-      // fallback
-      setFormError("⚠️ Erreur lors de la connexion");
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
-  };
+
+    // --- 2. Erreurs réseau ou JS ---
+    if (err?.message) {
+      setFormError(`⚠️ ${err.message}`);
+      return;
+    }
+
+    // --- 3. Fallback générique ---
+    setFormError("⚠️ Erreur lors de la connexion");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
