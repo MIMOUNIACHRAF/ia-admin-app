@@ -1,39 +1,63 @@
+// src/features/auth/authSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import { login, logout as logoutThunk, refreshToken, fetchUserData } from './authThunks';
 import authService from '../../services/authService';
 
+/**
+ * Etat initial
+ */
 const initialState = {
   user: null,
   tokens: { access: null },
   status: { isAuthenticated: false, isLoading: false, error: null },
 };
 
+/**
+ * Slice auth
+ * - Gestion de l’authentification
+ * - Gestion des tokens access + refresh (via authService)
+ * - Logout idempotent et centralisé
+ */
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    /**
+     * Nettoie uniquement l'erreur côté front
+     */
     clearError: (state) => {
       state.status.error = null;
     },
+
+    /**
+     * Mise à jour des tokens access
+     */
     setTokens: (state, action) => {
-      const access = action.payload?.access;
+      const access = action.payload?.access || null;
+      state.tokens.access = access;
+
       if (access) {
-        state.tokens.access = access;
         authService.setAccessToken(access);
         state.status.isAuthenticated = true;
       } else {
-        state.tokens.access = null;
         authService.clearAccessToken();
         state.status.isAuthenticated = false;
       }
     },
+
+    /**
+     * Logout idempotent
+     * - Supprime access + refresh + Redux state
+     */
     logout: () => {
       authService.clearAccessToken();
       authService.clearRefreshToken();
       return initialState;
     },
   },
+
   extraReducers: (builder) => {
+    // --- Login ---
     builder.addCase(login.pending, (state) => {
       state.status.isLoading = true;
       state.status.error = null;
@@ -41,6 +65,7 @@ const authSlice = createSlice({
     builder.addCase(login.fulfilled, (state, action) => {
       state.status.isLoading = false;
       state.user = action.payload.user || null;
+
       const access = action.payload.access || action.payload.tokens?.access;
       if (access) {
         state.tokens.access = access;
@@ -56,14 +81,16 @@ const authSlice = createSlice({
       state.status.isAuthenticated = false;
     });
 
+    // --- Logout thunk ---
     builder.addCase(logoutThunk.fulfilled, () => {
       authService.clearAccessToken();
       authService.clearRefreshToken();
       return initialState;
     });
 
+    // --- Refresh access token ---
     builder.addCase(refreshToken.fulfilled, (state, action) => {
-      const access = action.payload.access;
+      const access = action.payload?.access;
       if (access) {
         state.tokens.access = access;
         authService.setAccessToken(access);
@@ -76,6 +103,7 @@ const authSlice = createSlice({
       return initialState;
     });
 
+    // --- Fetch user data ---
     builder.addCase(fetchUserData.pending, (state) => {
       state.status.isLoading = true;
     });

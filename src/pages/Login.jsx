@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { login } from "../features/auth/authThunks";
@@ -12,10 +12,10 @@ import {
 import authService from "../services/authService";
 
 /**
- * Login page
- * - Bloque temporairement le refresh automatique lors de la soumission
- * - Validation simple côté client
- * - Affiche erreurs backend + frontend
+ * Login page - Production-ready, UX optimisée
+ * - Bloque temporairement le refresh automatique sur login
+ * - Validation frontend simple + messages backend
+ * - Feedback visuel sur loading/erreur
  */
 export default function Login() {
   const dispatch = useDispatch();
@@ -24,6 +24,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isLoading = useSelector(selectAuthLoading);
   const backendError = useSelector(selectAuthError);
@@ -35,7 +36,7 @@ export default function Login() {
     dispatch(clearError());
   }, [dispatch]);
 
-  // Redirige si déjà authentifié
+  // Redirection si déjà authentifié
   useEffect(() => {
     if (!isAuthenticated) return;
     authService.setSkipAutoRefresh?.(false);
@@ -43,23 +44,14 @@ export default function Login() {
   }, [isAuthenticated, navigate]);
 
   // --- Validation formulaire ---
-  const validateForm = () => {
-    if (!email.trim()) {
-      setFormError("L'email est requis");
-      return false;
-    }
-    if (!password) {
-      setFormError("Le mot de passe est requis");
-      return false;
-    }
+  const validateForm = useCallback(() => {
+    if (!email.trim()) return setFormError("L'email est requis"), false;
+    if (!password) return setFormError("Le mot de passe est requis"), false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setFormError("Format d'email invalide");
-      return false;
-    }
+    if (!emailRegex.test(email)) return setFormError("Format d'email invalide"), false;
     setFormError("");
     return true;
-  };
+  }, [email, password]);
 
   // --- Soumission ---
   const handleSubmit = async (e) => {
@@ -67,10 +59,13 @@ export default function Login() {
     if (!validateForm()) return;
 
     try {
+      setIsSubmitting(true);
       await dispatch(login({ email, password })).unwrap();
-      // la redirection est gérée dans useEffect(isAuthenticated)
+      // redirection gérée par useEffect(isAuthenticated)
     } catch (err) {
       setFormError(err?.message || "Erreur lors de la connexion");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -78,63 +73,65 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h1 className="text-center text-3xl font-extrabold text-gray-900">
             Connexion à votre compte
-          </h2>
+          </h1>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
+              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Email"
+                aria-invalid={!!formError}
+                aria-describedby="email-error"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="sr-only">
-                Mot de passe
-              </label>
+              <label htmlFor="password" className="sr-only">Mot de passe</label>
               <input
                 id="password"
                 name="password"
                 type="password"
                 autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Mot de passe"
+                aria-invalid={!!formError}
+                aria-describedby="password-error"
               />
             </div>
           </div>
 
-          {/* Affichage des erreurs */}
-          {formError && <p className="text-red-500 text-sm">{formError}</p>}
-          {backendError && <p className="text-red-500 text-sm">{backendError}</p>}
+          {/* Erreurs */}
+          {(formError || backendError) && (
+            <div className="text-red-500 text-sm" role="alert">
+              {formError || backendError}
+            </div>
+          )}
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {isLoading ? "Connexion..." : "Se connecter"}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={isLoading || isSubmitting}
+            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white
+              ${isLoading || isSubmitting ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"}
+              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+          >
+            {(isLoading || isSubmitting) ? "Connexion..." : "Se connecter"}
+          </button>
         </form>
-        
       </div>
     </div>
   );
