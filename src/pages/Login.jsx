@@ -62,22 +62,28 @@ export default function Login() {
     return true;
   }, [email, password]);
 
-  // Soumission formulaire
-const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Extraction message d'erreur sûr
+  const getErrorMessage = (err) => {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    if (err?.detail) return err.detail;
+    return "Erreur inconnue";
+  };
 
+  // Soumission formulaire
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!validateForm()) return;
 
     setIsSubmitting(true);
     setFormError("");
-    
+
     try {
       const result = await dispatch(login({ email, password })).unwrap();
-      // Succès
+      // Succès : sauvegarde email et reset erreur
       localStorage.setItem("lastEmail", email);
       setFormError("");
     } catch (err) {
-      // Extraire status et message textuel
       const status = err?.payload?.status || err?.status || null;
       const detail = err?.payload?.detail || err?.detail || err?.message || "Erreur inconnue";
 
@@ -99,10 +105,6 @@ const handleSubmit = async (e) => {
       setIsSubmitting(false);
     }
   };
-;
-
-
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -150,7 +152,7 @@ const handleSubmit = async (e) => {
 
           {(formError || backendError) && (
             <div className="text-red-500 text-sm mt-2" role="alert">
-              {formError || backendError}
+              {getErrorMessage(formError || backendError)}
             </div>
           )}
 
