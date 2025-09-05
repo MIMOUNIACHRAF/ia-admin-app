@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -53,7 +52,6 @@ export default function Login() {
     else if (formError.toLowerCase().includes("mot de passe")) passwordRef.current?.focus();
   }, [formError]);
 
-  // --- Validation formulaire ---
   const validateForm = useCallback(() => {
     if (!email.trim()) return setFormError("L'email est requis"), false;
     if (!password) return setFormError("Le mot de passe est requis"), false;
@@ -63,7 +61,6 @@ export default function Login() {
     return true;
   }, [email, password]);
 
-  // --- Soumission ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -72,6 +69,7 @@ export default function Login() {
       setIsSubmitting(true);
       await dispatch(login({ email, password })).unwrap();
       localStorage.setItem("lastEmail", email); // sauver email pour prochaines visites
+      setFormError(""); // reset erreur si succès
     } catch (err) {
       setFormError(err?.message || "Erreur lors de la connexion");
     } finally {
@@ -104,7 +102,6 @@ export default function Login() {
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Email"
                 aria-invalid={!!formError}
-                aria-describedby="email-error"
               />
             </div>
 
@@ -122,12 +119,10 @@ export default function Login() {
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="Mot de passe"
                 aria-invalid={!!formError}
-                aria-describedby="password-error"
               />
             </div>
           </div>
 
-          {/* Erreurs */}
           {(formError || backendError) && (
             <div className="text-red-500 text-sm mt-2" role="alert">
               {formError || backendError}
