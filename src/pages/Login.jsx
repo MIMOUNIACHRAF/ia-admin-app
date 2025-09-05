@@ -63,64 +63,61 @@ export default function Login() {
   }, [email, password]);
 
   // Soumission formulaire
- const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
+
   if (!validateForm()) return;
 
   setIsSubmitting(true);
-  setFormError(""); // reset avant soumission
 
   try {
     const result = await dispatch(login({ email, password })).unwrap();
 
-    // Succès : sauvegarde du dernier email + reset erreurs
+    // Succès : sauvegarde email + reset erreurs
     localStorage.setItem("lastEmail", email);
     setFormError("");
+
   } catch (err) {
-    // --- 1. Message du backend (détail ou trop de tentatives) ---
-    const backendMsg = err?.response?.data?.detail;
-    console.log(backendMsg);
-    console.log(err?.response?.detail);
-    const status = err?.response?.status;
-    const status2 = err?.response?.status;
-    const backendMsg2 =
-      err?.response?.data?.detail ||      // DRF: { "detail": "message" }
-      (typeof err?.response?.data === "string" && err.response.data) || // si backend renvoie juste string
-      err?.response?.statusText ||         // HTTP status text
-      err?.message ||                      // message JS/Axios
-      "Erreur inconnue";
+    let backendMsg = "Erreur inconnue";
+    let status;
 
-    console.log("status:", status2);
-    console.log("backendMsg:", backendMsg2);
+    // Si la réponse Axios existe
+    if (err?.response) {
+      status = err.response.status;
 
+      // Priorité : detail côté DRF
+      backendMsg =
+        err.response.data?.detail ||
+        JSON.stringify(err.response.data) || // fallback JSON brut
+        err.response.statusText ||
+        "Erreur serveur inconnue";
 
-    if (backendMsg) {
-      if (status === 403) {
-        // Trop de tentatives → afficher message exact du backend
-        setFormError(`⛔ ${backendMsg}`);
-      } else if (status === 401) {
-        // Credentials invalides
-        setFormError("❌ Email ou mot de passe incorrect");
-        passwordRef.current?.focus();
-      } else {
-        // Autres erreurs HTTP
-        setFormError(`⚠️ ${backendMsg}`);
-      }
-      return;
+    } else if (err?.request) {
+      // Requête envoyée mais pas de réponse (CORS / réseau)
+      backendMsg = "⚠️ Pas de réponse du serveur. Vérifiez votre connexion ou CORS.";
+    } else if (err?.message) {
+      // Erreur JS / Axios
+      backendMsg = err.message;
     }
 
-    // --- 2. Erreurs réseau ou JS ---
-    if (err?.message) {
-      setFormError(`⚠️ ${err.message}`);
-      return;
+    // Gestion focus automatique selon type d'erreur
+    if (status === 401) {
+      setFormError("❌ Email ou mot de passe incorrect");
+      passwordRef.current?.focus();
+    } else if (status === 403) {
+      setFormError(`⛔ ${backendMsg}`);
+      emailRef.current?.focus();
+    } else {
+      setFormError(`⚠️ ${backendMsg}`);
+      // Optionnel : focus sur email par défaut
+      emailRef.current?.focus();
     }
 
-    // --- 3. Fallback générique ---
-    setFormError("⚠️ Erreur lors de la connexion");
   } finally {
     setIsSubmitting(false);
   }
 };
+
 
 
   return (
