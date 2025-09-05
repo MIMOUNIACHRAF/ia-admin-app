@@ -62,43 +62,45 @@ export default function Login() {
   }, [email, password]);
 
   const handleSubmit = async (e) => {
-      e.preventDefault();
-      if (!validateForm()) return;
+    e.preventDefault();
+    if (!validateForm()) return;
 
-      try {
-        setIsSubmitting(true);
-        const result = await dispatch(login({ email, password })).unwrap();
+    try {
+      setIsSubmitting(true);
+      const result = await dispatch(login({ email, password })).unwrap();
 
-        // succès : sauvegarder email et reset erreur
-        localStorage.setItem("lastEmail", email);
-        setFormError("");
-      } catch (err) {
-        if (err.response) {
-          const status = err.response.status;
-          const data = err.response.data;
+      // Succès : sauvegarde email + reset erreurs
+      localStorage.setItem("lastEmail", email);
+      setFormError("");
+    } catch (err) {
+      // Vérifier si c'est une réponse HTTP du backend
+      if (err.response) {
+        const { status, data } = err.response;
 
-          if (status === 401) {
-            // Credentials invalides
-            setFormError("❌ Email ou mot de passe incorrect");
-          } else if (status === 403) {
-            // Interdiction (ex: trop de tentatives)
-            setFormError(`⛔ ${data.detail || "Accès refusé"}`);
-          } else if (data?.detail) {
-            // Autre message du backend
-            setFormError(`⚠️ ${data.detail}`);
-          } else {
-            setFormError("⚠️ Erreur lors de la connexion");
-          }
-        } else if (err.message) {
-          // Erreur JS / réseau
-          setFormError(`⚠️ ${err.message}`);
+        if (status === 401) {
+          // Credentials invalides (JWT / mauvais mot de passe)
+          setFormError("❌ Email ou mot de passe incorrect");
+          passwordRef.current?.focus();
+        } else if (status === 403) {
+          // Trop de tentatives de connexion (Axes)
+          setFormError(`⛔ ${data.detail || "Trop de tentatives. Veuillez réessayer plus tard."}`);
+        } else if (data?.detail) {
+          // Autre erreur renvoyée par le backend
+          setFormError(`⚠️ ${data.detail}`);
         } else {
           setFormError("⚠️ Erreur lors de la connexion");
         }
-      } finally {
-        setIsSubmitting(false);
+      } else if (err.message) {
+        // Erreur JS / réseau
+        setFormError(`⚠️ ${err.message}`);
+      } else {
+        setFormError("⚠️ Erreur lors de la connexion");
       }
+    } finally {
+      setIsSubmitting(false);
+    }
 };
+
 
 
 
