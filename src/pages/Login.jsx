@@ -52,6 +52,7 @@ export default function Login() {
     else if (formError.toLowerCase().includes("mot de passe")) passwordRef.current?.focus();
   }, [formError]);
 
+  // Validation front-end
   const validateForm = useCallback(() => {
     if (!email.trim()) return setFormError("L'email est requis"), false;
     if (!password) return setFormError("Le mot de passe est requis"), false;
@@ -61,6 +62,7 @@ export default function Login() {
     return true;
   }, [email, password]);
 
+  // Soumission formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -69,12 +71,11 @@ export default function Login() {
 
     try {
       const result = await dispatch(login({ email, password })).unwrap();
-
       // Succès : sauvegarde email + reset erreurs
       localStorage.setItem("lastEmail", email);
       setFormError("");
     } catch (err) {
-      // Priorité aux messages renvoyés par le backend
+      // Gestion prioritaire des messages backend
       const backendMsg = err?.response?.data?.detail;
       if (backendMsg) {
         setFormError(
