@@ -2,13 +2,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
 
-/**
- * --- Login ---
- * Appelle le backend et stocke access token en mémoire
- */
-// src/features/auth/authThunks.js
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import authService from '../../services/authService';
+ 
 
 /**
  * --- Login ---
