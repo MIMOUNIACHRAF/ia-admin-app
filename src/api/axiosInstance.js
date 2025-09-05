@@ -1,52 +1,54 @@
-// src/api/axiosInstance.js
-import axios from "axios";
-import { API_BASE_URL, API_ENDPOINTS } from "./config";
-import authService from "../services/authService";
-import store from "../store";
-import { setTokens, logout } from "../features/auth/authSlice";
+import axios from 'axios';
+import { API_BASE_URL, API_ENDPOINTS } from './config';
+import authService from '../services/authService';
+import store from '../store';
+import { setTokens, logout } from '../features/auth/authSlice';
 
-/**
- * Instance axios centralisée.
- */
 let api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-/**
- * Permet de remplacer l’instance (utile après re-init)
- */
-export const setAxiosInstance = (instance) => {
-  api = instance;
-};
+export const initializeAxios = () => {
+  const axiosInstance = axios.create({
+    baseURL: API_BASE_URL,
+    withCredentials: true,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-/**
- * Initialise Axios avec store → ajoute les interceptors
- */
-export const initializeAxios = (store) => {
-  api.interceptors.request.use(
+  // --- Interceptor avant chaque requête ---
+  axiosInstance.interceptors.request.use(
     (config) => {
-      const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, "/signup"];
-      if (openEndpoints.some((ep) => config.url?.endsWith(ep))) return config;
+      const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, '/signup'];
+      if (openEndpoints.some(ep => config.url?.endsWith(ep))) return config;
 
+      // Ajouter access token si présent
       const token = authService.getAccessToken();
-      if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      if (token) config.headers.Authorization = `Bearer ${token}`;
 
+      // Ajouter refresh token uniquement pour refresh endpoint
+      if (config.url?.endsWith(API_ENDPOINTS.REFRESH_TOKEN)) {
+        const refresh = document.cookie
+          .split(';')
+          .map(c => c.trim())
+          .find(c => c.startsWith('refresh_token='))?.split('=')[1];
+          console.log("refrehs is ",refresh);
+          console.log("document.cookie is ",document.cookie);
+        if (refresh) config.headers['X-Refresh-Token'] = refresh;
+      }
       return config;
     },
-    (err) => Promise.reject(err)
+    (error) => Promise.reject(error)
   );
 
-  api.interceptors.response.use(
+  // --- Interceptor après chaque réponse ---
+  axiosInstance.interceptors.response.use(
     (response) => {
-      const newAccess = response.headers?.["x-new-access-token"];
+      // Mettre à jour access token si reçu dans headers
+      const newAccess = response.headers['x-new-access-token'];
       if (newAccess) {
-        authService._internalSetAccessToken(newAccess);
+        authService.setAccessToken(newAccess);
         store.dispatch(setTokens({ access: newAccess }));
       }
       return response;
@@ -54,40 +56,35 @@ export const initializeAxios = (store) => {
     async (error) => {
       const originalRequest = error.config;
 
-      if (!originalRequest) return Promise.reject(error);
-
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
+        // Vérifier si refresh token existe
         if (!authService.isRefreshTokenPresent()) {
-          authService.performLocalLogout(() => {
-            store.dispatch(logout());
-            window.location.replace("/login");
-          });
-          return Promise.reject(error);
+          console.log("refrehs is 2 ",refresh);
+          console.log("document.cookie is ",document.cookie);
+          store.dispatch(logout());
+          return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
         }
 
         try {
-          const newAccess = await authService.refreshAccessToken(() => {
-            authService.performLocalLogout(() => {
-              store.dispatch(logout());
-              window.location.replace("/login");
-            });
-          });
+          const newAccess = await authService.refreshAccessToken();
+          if (!newAccess) {
+            console.log("refrehs is 3",refresh);
+          console.log("document.cookie is ",document.cookie);
+            store.dispatch(logout());
+            return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
+          }
 
-          if (!newAccess) return Promise.reject(error);
-
-          originalRequest.headers = originalRequest.headers || {};
           originalRequest.headers.Authorization = `Bearer ${newAccess}`;
           store.dispatch(setTokens({ access: newAccess }));
 
-          return api(originalRequest);
+          return axiosInstance(originalRequest);
         } catch (err) {
-          authService.performLocalLogout(() => {
-            store.dispatch(logout());
-            window.location.replace("/login");
-          });
-          return Promise.reject(err);
+          console.log("refrehs is 4",refresh);
+          console.log("document.cookie is ",document.cookie);
+          store.dispatch(logout());
+          return Promise.reject(new Error('Session terminée, veuillez vous reconnecter.'));
         }
       }
 
@@ -95,7 +92,12 @@ export const initializeAxios = (store) => {
     }
   );
 
-  return api;
+  api = axiosInstance;
+  return axiosInstance;
+};
+
+export const setAxiosInstance = (instance) => {
+  api = instance;
 };
 
 export default api;
