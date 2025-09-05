@@ -29,7 +29,7 @@ export const initializeAxios = (store) => {
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: { "Content-Type": "application/json" },
-    timeout: 15000,
+    timeout: 10000,
   });
 
   // helper lecture cookie sans logger le token complet
