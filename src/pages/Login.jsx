@@ -62,20 +62,43 @@ export default function Login() {
   }, [email, password]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+      e.preventDefault();
+      if (!validateForm()) return;
 
-    try {
-      setIsSubmitting(true);
-      await dispatch(login({ email, password })).unwrap();
-      localStorage.setItem("lastEmail", email); // sauver email pour prochaines visites
-      setFormError(""); // reset erreur si succès
-    } catch (err) {
-      setFormError(err?.message || "Erreur lors de la connexion");
-    } finally {
-      setIsSubmitting(false);
-    }
+      try {
+        setIsSubmitting(true);
+        const result = await dispatch(login({ email, password })).unwrap();
+        
+        // succès : sauvegarder email et reset erreur
+        localStorage.setItem("lastEmail", email);
+        setFormError("");
+      } catch (err) {
+        // --- Gestion détaillée des erreurs ---
+        if (err.response) {
+          // Erreur venant du backend
+          const status = err.response.status;
+          const data = err.response.data;
+
+          if (status === 401) {
+            // Login invalide
+            setFormError("❌ Email ou mot de passe incorrect");
+          } else if (data?.detail) {
+            // Autre message backend
+            setFormError(`⚠️ ${data.detail}`);
+          } else {
+            setFormError("⚠️ Erreur lors de la connexion");
+          }
+        } else if (err.message) {
+          // Erreur JS / réseau
+          setFormError(`⚠️ ${err.message}`);
+        } else {
+          setFormError("⚠️ Erreur lors de la connexion");
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
