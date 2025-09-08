@@ -13,4 +13,5 @@ export const API_ENDPOINTS = {
   LOGOUT: "/auth/logout/",
   REFRESH_TOKEN: "/auth/refresh/",
   USER: "/auth/user/",
+  AGENTS: "/V1/agents/",
 };
