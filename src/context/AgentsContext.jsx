@@ -1,42 +1,42 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { initialAgents } from "../data/agents";
+import agentsService from "../services/agentsService";
 
 const AgentsContext = createContext();
 
 export function AgentsProvider({ children }) {
-  const [agents, setAgents] = useState(() => {
-    const saved = localStorage.getItem("agents");
-    return saved ? JSON.parse(saved) : initialAgents;
-  });
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Charger les agents au montage
   useEffect(() => {
-    localStorage.setItem("agents", JSON.stringify(agents));
-  }, [agents]);
+    agentsService.fetchAll().then(setAgents).finally(() => setLoading(false));
+  }, []);
 
-  const addAgent = (agent) => {
-    const prompts = agent.prompts || [];
-    setAgents((prev) => [...prev, { ...agent, id: Date.now(), prompts }]);
+  const addAgent = async (agent) => {
+    const newAgent = await agentsService.create(agent);
+    setAgents((prev) => [...prev, newAgent]);
   };
 
-  const removeAgent = (id) => {
+  const removeAgent = async (id) => {
+    await agentsService.remove(id);
     setAgents((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const updateAgentPrompts = (id, prompts) => {
-    setAgents((prev) =>
-      prev.map((agent) =>
-        agent.id === id ? { ...agent, prompts } : agent
-      )
-    );
+  const updateAgentPrompts = async (id, prompts) => {
+    const agent = agents.find((a) => a.id === id);
+    if (!agent) return;
+
+    const updated = { ...agent, prompts };
+    const saved = await agentsService.update(id, updated);
+
+    setAgents((prev) => prev.map((a) => (a.id === id ? saved : a)));
   };
 
   return (
-    <AgentsContext.Provider value={{ agents, addAgent, removeAgent, updateAgentPrompts }}>
+    <AgentsContext.Provider value={{ agents, loading, addAgent, removeAgent, updateAgentPrompts }}>
       {children}
     </AgentsContext.Provider>
   );
 }
 
-export function useAgents() {
-  return useContext(AgentsContext);
-}
+export const useAgents = () => useContext(AgentsContext);
