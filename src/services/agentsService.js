@@ -1,5 +1,5 @@
+// src/services/agentsService.js
 import api from "../api/axiosInstance";
-
 import { API_ENDPOINTS } from "../api/config";
 
 // Mapping API ↔ Frontend
@@ -33,22 +33,26 @@ function mapToApi(agent) {
 }
 
 const agentsService = {
+  // --- GET all agents ---
   async fetchAll() {
     const res = await api.get(API_ENDPOINTS.AGENTS);
     const results = res.data?.results ?? res.data;
     return (results || []).map(mapFromApi);
   },
 
+  // --- CREATE a new agent ---
   async create(agent) {
     const res = await api.post(API_ENDPOINTS.AGENTS, mapToApi(agent));
     return mapFromApi(res.data);
   },
 
+  // --- UPDATE an existing agent ---
   async update(id, agent) {
     const res = await api.put(`${API_ENDPOINTS.AGENTS}${id}/`, mapToApi(agent));
     return mapFromApi(res.data);
   },
 
+  // --- DELETE an agent ---
   async remove(id) {
     await api.delete(`${API_ENDPOINTS.AGENTS}${id}/`);
     return id;
