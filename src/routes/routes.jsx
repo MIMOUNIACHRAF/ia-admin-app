@@ -21,7 +21,7 @@ export default function AppRoutes() {
         <Route element={<AdminLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/agents" element={<AgentsPage />} />
+          {/* <Route path="/agents" element={<AgentsPage />} /> */}
           <Route path="/settings" element={<Settings />} />
           <Route path="/logs" element={<Logs />} />
         </Route>
