@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import agentsService from "../../api/agentsService";
-
-// Fetch all agents
+import agentsService from "../../services/agentsService";
 export const fetchAgents = createAsyncThunk("agents/fetchAll", async () => {
   return await agentsService.fetchAll();
 });
