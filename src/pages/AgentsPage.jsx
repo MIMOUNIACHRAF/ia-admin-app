@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchAgents, createAgent, removeAgent } from "../features/agents/agentsSlice";
-
+import { fetchAgents, createAgent, deleteAgent } from "../features/agents/agentsSlice";
 export default function AgentsPage() {
   const dispatch = useDispatch();
   const { items: agents, status, error } = useSelector((s) => s.agents);
@@ -27,7 +26,7 @@ export default function AgentsPage() {
 
   const onDelete = (id) => {
     if (window.confirm("Supprimer cet agent ?")) {
-      dispatch(removeAgent(id));
+      dispatch(deleteAgent(id));
     }
   };
 
