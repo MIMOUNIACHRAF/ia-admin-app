@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../pages/Dashboard";
-import Agents from "../pages/Agents";
+import Agents from "../pages/AgentsPage";
 import Settings from "../pages/Settings";
 import Logs from "../pages/Logs";
 import Login from "../pages/Login";
