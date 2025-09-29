@@ -1,72 +1,50 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import agentsService from "../../services/agentsService";
+import agentsService from "../../api/agentsService";
 
-/* Thunks CRUD */
-export const fetchAgents = createAsyncThunk("agents/fetch", async (_, { rejectWithValue }) => {
-  try {
-    const data = await agentsService.getAgents();
-    return data;
-  } catch (err) {
-    return rejectWithValue(err?.message || "fetch failed");
-  }
+// Fetch all agents
+export const fetchAgents = createAsyncThunk("agents/fetchAll", async () => {
+  return await agentsService.fetchAll();
 });
 
-export const createAgent = createAsyncThunk("agents/create", async (agent, { rejectWithValue }) => {
-  try {
-    const data = await agentsService.createAgent(agent);
-    return data;
-  } catch (err) {
-    return rejectWithValue(err?.message || "create failed");
-  }
-});
-
-export const updateAgent = createAsyncThunk(
-  "agents/update",
-  async ({ id, agent }, { rejectWithValue }) => {
-    try {
-      const data = await agentsService.updateAgent(id, agent);
-      return data;
-    } catch (err) {
-      return rejectWithValue(err?.message || "update failed");
-    }
+// Create agent
+export const createAgent = createAsyncThunk(
+  "agents/create",
+  async (agent) => {
+    return await agentsService.create(agent);
   }
 );
 
-export const deleteAgent = createAsyncThunk("agents/delete", async (id, { rejectWithValue }) => {
-  try {
-    await agentsService.deleteAgent(id);
-    return id;
-  } catch (err) {
-    return rejectWithValue(err?.message || "delete failed");
+// Delete agent
+export const removeAgent = createAsyncThunk(
+  "agents/remove",
+  async (id) => {
+    return await agentsService.remove(id);
   }
-});
+);
 
-/* Slice */
 const agentsSlice = createSlice({
   name: "agents",
-  initialState: {
-    items: [],
-    status: "idle",
-    error: null,
-  },
+  initialState: { items: [], status: "idle", error: null },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAgents.pending, (s) => { s.status = "loading"; s.error = null; })
-      .addCase(fetchAgents.fulfilled, (s, a) => { s.status = "succeeded"; s.items = a.payload; })
-      .addCase(fetchAgents.rejected, (s, a) => { s.status = "failed"; s.error = a.payload || a.error.message; })
-
-      .addCase(createAgent.fulfilled, (s, a) => { s.items.push(a.payload); })
-      .addCase(createAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; })
-
-      .addCase(updateAgent.fulfilled, (s, a) => {
-        const idx = s.items.findIndex((it) => it.id === a.payload.id);
-        if (idx >= 0) s.items[idx] = a.payload;
+      .addCase(fetchAgents.pending, (state) => {
+        state.status = "loading";
       })
-      .addCase(updateAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; })
-
-      .addCase(deleteAgent.fulfilled, (s, a) => { s.items = s.items.filter((it) => it.id !== a.payload); })
-      .addCase(deleteAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; });
+      .addCase(fetchAgents.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.items = action.payload;
+      })
+      .addCase(fetchAgents.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(createAgent.fulfilled, (state, action) => {
+        state.items.push(action.payload);
+      })
+      .addCase(removeAgent.fulfilled, (state, action) => {
+        state.items = state.items.filter((a) => a.id !== action.payload);
+      });
   },
 });
 

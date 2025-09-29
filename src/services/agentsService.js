@@ -1,5 +1,5 @@
-import api from "../api/axiosInstance";
-import { API_ENDPOINTS } from "../api/config";
+import api from "./axiosInstance";
+import { API_ENDPOINTS } from "./config";
 
 // Mapping API ↔ Frontend
 function mapFromApi(agent) {

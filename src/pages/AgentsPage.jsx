@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchAgents, createAgent } from "../features/agents/agentsSlice";
-import AgentList from "../components/AgentList";
+import { fetchAgents, createAgent, removeAgent } from "../features/agents/agentsSlice";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
@@ -9,12 +8,27 @@ export default function AgentsPage() {
   const [nom, setNom] = useState("");
   const [description, setDescription] = useState("");
 
-  useEffect(() => { dispatch(fetchAgents()); }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchAgents());
+  }, [dispatch]);
 
   const onCreate = () => {
     if (!nom.trim()) return alert("Nom requis");
-    dispatch(createAgent({ nom: nom.trim(), description: description.trim(), type_agent: "trad", actif: true, questions_reponses: [] }));
-    setNom(""); setDescription("");
+    dispatch(createAgent({
+      name: nom.trim(),
+      role: description.trim(),
+      type: "trad",
+      actif: true,
+      prompts: [],
+    }));
+    setNom("");
+    setDescription("");
+  };
+
+  const onDelete = (id) => {
+    if (window.confirm("Supprimer cet agent ?")) {
+      dispatch(removeAgent(id));
+    }
   };
 
   return (
@@ -37,7 +51,16 @@ export default function AgentsPage() {
         <h2 className="font-semibold mb-3">Liste des agents</h2>
         {status === "loading" && <p>Chargement...</p>}
         {status === "failed" && <p className="text-red-600">Erreur: {error}</p>}
-        <AgentList agents={agents} />
+        <ul>
+          {agents.map((a) => (
+            <li key={a.id} className="border-b py-2 flex justify-between items-center">
+              <div>
+                <strong>{a.name}</strong> - {a.role}
+              </div>
+              <button className="text-red-600" onClick={() => onDelete(a.id)}>Supprimer</button>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
