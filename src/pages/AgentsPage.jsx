@@ -1,10 +1,15 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAgents } from "../context/AgentsContext";
 
 export default function AgentsPage() {
   const { agents, loading, fetchAgents, addAgent, removeAgent } = useAgents();
   const [nom, setNom] = useState("");
   const [description, setDescription] = useState("");
+
+  // ⚡ Charger la liste des agents uniquement au montage de la page
+  useEffect(() => {
+    fetchAgents();
+  }, []); // [] = seulement au premier rendu
 
   const onCreate = async () => {
     if (!nom.trim()) return alert("Nom requis");
@@ -58,19 +63,10 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <button
-          className="bg-green-600 text-white px-3 py-2 rounded"
-          onClick={fetchAgents}
-          disabled={loading}
-        >
-          {loading ? "Chargement..." : "Charger les agents"}
-        </button>
-      </div>
-
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold mb-3">Liste des agents</h2>
-        {agents.length === 0 && !loading && <p>Aucun agent chargé.</p>}
+        {loading && <p>Chargement...</p>}
+        {!loading && agents.length === 0 && <p>Aucun agent trouvé.</p>}
         <ul>
           {agents.map((a) => (
             <li key={a.id} className="border-b py-2 flex justify-between items-center">
