@@ -1,35 +1,27 @@
-// src/pages/AgentsPage.jsx
-import React, { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { fetchAgents, createAgent, deleteAgent } from "../features/agents/agentsSlice";
+import React, { useState } from "react";
+import { useAgents } from "../context/AgentsProvider";
 
 export default function AgentsPage() {
-  const dispatch = useDispatch();
-  const { items: agents, status, error } = useSelector((s) => s.agents);
-
+  const { agents, loading, fetchAgents, addAgent, removeAgent } = useAgents();
   const [nom, setNom] = useState("");
   const [description, setDescription] = useState("");
 
-  useEffect(() => {
-    dispatch(fetchAgents());
-  }, [dispatch]);
-
-  const onCreate = () => {
+  const onCreate = async () => {
     if (!nom.trim()) return alert("Nom requis");
-    dispatch(createAgent({
+    await addAgent({
       nom: nom.trim(),
       description: description.trim(),
       type_agent: "trad",
       actif: true,
       questions_reponses: [],
-    }));
+    });
     setNom("");
     setDescription("");
   };
 
-  const onDelete = (id) => {
+  const onDelete = async (id) => {
     if (window.confirm("Supprimer cet agent ?")) {
-      dispatch(deleteAgent(id));
+      await removeAgent(id);
     }
   };
 
@@ -66,10 +58,19 @@ export default function AgentsPage() {
         </div>
       </div>
 
+      <div className="mb-4">
+        <button
+          className="bg-green-600 text-white px-3 py-2 rounded"
+          onClick={fetchAgents}
+          disabled={loading}
+        >
+          {loading ? "Chargement..." : "Charger les agents"}
+        </button>
+      </div>
+
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold mb-3">Liste des agents</h2>
-        {status === "loading" && <p>Chargement...</p>}
-        {status === "failed" && <p className="text-red-600">Erreur: {error}</p>}
+        {agents.length === 0 && !loading && <p>Aucun agent chargé.</p>}
         <ul>
           {agents.map((a) => (
             <li key={a.id} className="border-b py-2 flex justify-between items-center">

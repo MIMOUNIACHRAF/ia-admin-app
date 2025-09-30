@@ -1,20 +1,24 @@
-// src/context/AgentsProvider.jsx
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 import agentsService from "../services/agentsService";
 
 const AgentsContext = createContext();
 
 export function AgentsProvider({ children }) {
   const [agents, setAgents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Charger les agents au montage
-  useEffect(() => {
-    agentsService
-      .getAgents()
-      .then(setAgents)
-      .finally(() => setLoading(false));
-  }, []);
+  // Fonction pour récupérer les agents manuellement
+  const fetchAgents = async () => {
+    setLoading(true);
+    try {
+      const list = await agentsService.getAgents();
+      setAgents(list);
+    } catch (err) {
+      console.error("Erreur fetchAgents:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addAgent = async (agent) => {
     const newAgent = await agentsService.createAgent(agent);
@@ -30,16 +34,14 @@ export function AgentsProvider({ children }) {
     const agent = agents.find((a) => a.id === id);
     if (!agent) return;
 
-    // ton backend attend "questions_reponses"
     const updated = { ...agent, questions_reponses: prompts };
     const saved = await agentsService.updateAgent(id, updated);
-
     setAgents((prev) => prev.map((a) => (a.id === id ? saved : a)));
   };
 
   return (
     <AgentsContext.Provider
-      value={{ agents, loading, addAgent, removeAgent, updateAgentPrompts }}
+      value={{ agents, loading, fetchAgents, addAgent, removeAgent, updateAgentPrompts }}
     >
       {children}
     </AgentsContext.Provider>
