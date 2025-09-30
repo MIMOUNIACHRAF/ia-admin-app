@@ -1,15 +1,28 @@
-import { configureStore, combineReducers } from '@reduxjs/toolkit';
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import authReducer from '../features/auth/authSlice';
-import { initializeAxios, setAxiosInstance } from '../api/axiosInstance';
-import persistConfig, { authPersistConfig } from './persistConfig';
+// src/store/index.js
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from "redux-persist";
+
+import authReducer from "../features/auth/authSlice";
+import agentsReducer from "../features/agents/agentsSlice";
+
+import { initializeAxios, setAxiosInstance } from "../api/axiosInstance";
+import persistConfig, { authPersistConfig } from "./persistConfig";
 
 /**
  * Combine all reducers
  */
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
-  // Ajoute d'autres reducers ici si nécessaire
+  agents: agentsReducer,
 });
 
 /**
@@ -23,7 +36,7 @@ const store = configureStore({
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
-  devTools: process.env.NODE_ENV !== 'production',
+  devTools: process.env.NODE_ENV !== "production",
 });
 
 /**
