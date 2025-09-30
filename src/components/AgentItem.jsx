@@ -1,32 +1,22 @@
 import React, { useState } from "react";
+import { useAgents } from "../hooks/useAgents";
 import PromptEditor from "./PromptEditor";
-import { useDispatch } from "react-redux";
-import { updateAgent, deleteAgent } from "../features/agents/agentsSlice";
 
 export default function AgentItem({ agent }) {
-  const dispatch = useDispatch();
+  const { updateAgent, removeAgent } = useAgents();
   const [editing, setEditing] = useState(false);
   const [local, setLocal] = useState({ ...agent });
 
   const onField = (k, v) => setLocal((prev) => ({ ...prev, [k]: v }));
 
-  const onPromptChange = (idx, field, value) => {
-    const copy = [...(local.questions_reponses || [])];
-    copy[idx] = { ...(copy[idx] || {}), [field]: value };
-    setLocal((p) => ({ ...p, questions_reponses: copy }));
-  };
-  const onAddPrompt = () => {
-    const copy = [...(local.questions_reponses || []), { question: "", reponse: "" }];
-    setLocal((p) => ({ ...p, questions_reponses: copy }));
-  };
-  const onRemovePrompt = (idx) => {
-    const copy = [...(local.questions_reponses || [])];
-    copy.splice(idx, 1);
-    setLocal((p) => ({ ...p, questions_reponses: copy }));
+  const save = () => {
+    updateAgent(agent.id, local);
+    setEditing(false);
   };
 
-  const save = () => { dispatch(updateAgent({ id: agent.id, agent: local })); setEditing(false); };
-  const remove = () => { if (!window.confirm("Supprimer cet agent ?")) return; dispatch(deleteAgent(agent.id)); };
+  const del = () => {
+    if (window.confirm("Supprimer cet agent ?")) removeAgent(agent.id);
+  };
 
   return (
     <div className="border rounded p-4 mb-4 bg-white">
@@ -42,16 +32,19 @@ export default function AgentItem({ agent }) {
             <strong>Type:</strong> {agent.type_agent} • <strong>Actif:</strong> {agent.actif ? "Oui" : "Non"}
           </p>
         </div>
+
         <div className="flex flex-col gap-2">
-          <button className="text-blue-600 hover:underline" onClick={() => setEditing((s) => !s)}>{editing ? "Annuler" : "Modifier"}</button>
-          <button className="text-red-600 hover:underline" onClick={remove}>Supprimer</button>
+          <button className="text-blue-600 hover:underline" onClick={() => setEditing((s) => !s)}>
+            {editing ? "Annuler" : "Modifier"}
+          </button>
+          <button className="text-red-600 hover:underline" onClick={del}>Supprimer</button>
         </div>
       </div>
 
       {editing && (
         <>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <input className="p-2 border rounded" value={local.description || ""} placeholder="Description" onChange={(e) => onField("description", e.target.value)} />
+            <input className="p-2 border rounded" value={local.description} placeholder="Description" onChange={(e) => onField("description", e.target.value)} />
             <select className="p-2 border rounded" value={local.type_agent} onChange={(e) => onField("type_agent", e.target.value)}>
               <option value="trad">trad</option>
               <option value="llm">llm</option>
@@ -61,7 +54,20 @@ export default function AgentItem({ agent }) {
             </label>
           </div>
 
-          <PromptEditor prompts={local.questions_reponses || []} onChange={onPromptChange} onAdd={onAddPrompt} onRemove={onRemovePrompt} />
+          <PromptEditor
+            prompts={local.questions_reponses || []}
+            onChange={(idx, field, value) => {
+              const copy = [...(local.questions_reponses || [])];
+              copy[idx] = { ...(copy[idx] || {}), [field]: value };
+              setLocal((p) => ({ ...p, questions_reponses: copy }));
+            }}
+            onAdd={() => setLocal((p) => ({ ...p, questions_reponses: [...(p.questions_reponses || []), { question: "", reponse: "" }] }))}
+            onRemove={(idx) => {
+              const copy = [...(local.questions_reponses || [])];
+              copy.splice(idx, 1);
+              setLocal((p) => ({ ...p, questions_reponses: copy }));
+            }}
+          />
 
           <div className="mt-3 flex gap-2">
             <button className="bg-green-600 text-white px-3 py-2 rounded" onClick={save}>Enregistrer</button>

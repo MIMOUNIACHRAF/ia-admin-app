@@ -1,4 +1,3 @@
-// src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
@@ -9,7 +8,6 @@ import App from "./App.jsx";
 import "./index.css";
 import { AgentsProvider } from "./context/AgentsContext";
 
-// Import utilitaire de test auth (dev uniquement)
 import "./utils/authTestScript";
 
 ReactDOM.createRoot(document.getElementById("root")).render(

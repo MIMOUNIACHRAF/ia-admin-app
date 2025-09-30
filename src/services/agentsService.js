@@ -1,4 +1,3 @@
-// src/services/agentsService.js
 import api from "../api/axiosInstance";
 import { API_ENDPOINTS } from "../api/config";
 
@@ -13,14 +12,14 @@ function transformFromBackend(item) {
   };
 }
 
-function transformToBackend(payload) {
+function transformToBackend(agent) {
   return {
-    id: payload.id,
-    nom: payload.nom,
-    description: payload.description,
-    type_agent: payload.type_agent,
-    actif: payload.actif,
-    questions_reponses: payload.questions_reponses || [],
+    id: agent.id,
+    nom: agent.nom,
+    description: agent.description,
+    type_agent: agent.type_agent,
+    actif: agent.actif,
+    questions_reponses: agent.questions_reponses || [],
   };
 }
 
