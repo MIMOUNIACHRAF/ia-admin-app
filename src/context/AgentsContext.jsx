@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+// src/context/AgentsContext.jsx
+import React, { createContext, useContext, useState } from "react";
 import agentsService from "../services/agentsService";
 
 const AgentsContext = createContext();
@@ -8,10 +9,7 @@ export function AgentsProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Charger les agents au montage et ne pas recharger inutilement
-  useEffect(() => {
-    fetchAgents();
-  }, []);
+  // ⚡ plus de fetch automatique ici
 
   const fetchAgents = async () => {
     setLoading(true);

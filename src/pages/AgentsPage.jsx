@@ -1,11 +1,17 @@
-import React, { useState } from "react";
+// src/pages/AgentsPage.jsx
+import React, { useState, useEffect } from "react";
 import { useAgents } from "../hooks/useAgents";
 import AgentList from "../components/AgentList";
 import AgentFormModal from "../components/AgentFormModal";
 
 export default function AgentsPage() {
-  const { agents, loading, error, addAgent } = useAgents();
+  const { agents, loading, error, fetchAgents, addAgent } = useAgents();
   const [showModal, setShowModal] = useState(false);
+
+  // ⚡ fetch uniquement quand cette page est montée
+  useEffect(() => {
+    fetchAgents();
+  }, []); // [] = au premier rendu
 
   const handleCreate = async (data) => {
     await addAgent(data);
