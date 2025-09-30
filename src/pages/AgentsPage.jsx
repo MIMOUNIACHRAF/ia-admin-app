@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useAgents } from "../context/AgentsProvider";
+import { useAgents } from "../context/AgentsContext";
 
 export default function AgentsPage() {
   const { agents, loading, fetchAgents, addAgent, removeAgent } = useAgents();
