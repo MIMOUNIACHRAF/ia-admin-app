@@ -13,18 +13,25 @@ import Loader from "../components/common/Loader";
 export default function TemplatesPage() {
   const dispatch = useDispatch();
 
-  // fallback pour éviter undefined
+  // Récupération sécurisée de l'état Redux
   const templatesState = useSelector(
-    (state) => state.templates || { list: [], loading: false }
+    (state) =>
+      state.templates || {
+        list: [],
+        loading: false,
+        error: null,
+      }
   );
-  const { list: templates, loading } = templatesState;
 
+  const { list: templates, loading, error } = templatesState;
   const [editingTemplate, setEditingTemplate] = useState(null);
 
+  // Chargement initial
   useEffect(() => {
     dispatch(fetchTemplates());
   }, [dispatch]);
 
+  // Soumission formulaire
   const handleSubmit = async (data) => {
     if (editingTemplate) {
       await dispatch(updateTemplate({ id: editingTemplate.id, data }));
@@ -34,19 +41,40 @@ export default function TemplatesPage() {
     setEditingTemplate(null);
   };
 
-  if (!templatesState) return <Loader />;
+  // Suppression
+  const handleDelete = async (id) => {
+    if (window.confirm("Confirmer la suppression de ce template ?")) {
+      await dispatch(deleteTemplate(id));
+    }
+  };
+
+  // --- affichages conditionnels ---
+  if (loading) return <Loader />;
+
+  if (error) {
+    return (
+      <div className="p-4 text-red-600">
+        <h2 className="font-bold mb-2">Erreur de chargement</h2>
+        <pre className="bg-red-100 p-2 rounded text-sm">
+          {JSON.stringify(error, null, 2)}
+        </pre>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold">Templates</h2>
+      <h2 className="text-2xl font-bold text-gray-800">Templates</h2>
+
       <TemplateForm onSubmit={handleSubmit} initialData={editingTemplate} />
-      {loading ? (
-        <Loader />
+
+      {templates.length === 0 ? (
+        <p className="text-gray-500 italic">Aucun template disponible.</p>
       ) : (
         <TemplateList
           templates={templates}
           onEdit={setEditingTemplate}
-          onDelete={(id) => dispatch(deleteTemplate(id))}
+          onDelete={handleDelete}
         />
       )}
     </div>
