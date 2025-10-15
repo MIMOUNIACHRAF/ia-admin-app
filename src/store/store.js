@@ -1,17 +1,17 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import agentsReducer from "../features/agents/agentsSlice";
 import templatesReducer from "../features/templates/templatesSlice";
 import { persistStore, persistReducer } from "redux-persist";
-import storage from "redux-persist/lib/storage"; // localStorage
+import storage from "redux-persist/lib/storage";
 
 const persistConfig = { key: "root", storage, whitelist: ["agents", "templates"] };
 
-const rootReducer = {
+const rootReducer = combineReducers({
   agents: agentsReducer,
   templates: templatesReducer,
-};
+});
 
-const persistedReducer = persistReducer(persistConfig, combineReducers(rootReducer));
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const store = configureStore({ reducer: persistedReducer });
 export const persistor = persistStore(store);
