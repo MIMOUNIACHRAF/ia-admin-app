@@ -1,42 +1,60 @@
-// src/pages/AgentsPage.jsx
-import React, { useState, useEffect } from "react";
-import { useAgents } from "../hooks/useAgents";
-import AgentList from "../components/AgentList";
-import AgentFormModal from "../components/AgentFormModal";
-//
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchAgents, createAgent, updateAgent, deleteAgent, assignTemplate, unassignTemplate } from "../features/agents/agentsSlice";
+import { fetchTemplates } from "../features/templates/templatesSlice";
+import AgentList from "../components/Agent/AgentList";
+import AgentForm from "../components/Agent/AgentForm";
+import AgentTemplates from "../components/Agent/AgentTemplates";
+import AgentMatch from "../components/Agent/AgentMatch";
+import Loader from "../components/common/Loader";
+
 export default function AgentsPage() {
-  const { agents, loading, error, fetchAgents, addAgent } = useAgents();
-  const [showModal, setShowModal] = useState(false);
+  const dispatch = useDispatch();
+  const { list: agents, loading } = useSelector(state => state.agents);
+  const { list: templates } = useSelector(state => state.templates);
 
-  // ⚡ fetch uniquement quand cette page est montée
+  const [editingAgent, setEditingAgent] = useState(null);
+
   useEffect(() => {
-    fetchAgents();
-  }, []); // [] = au premier rendu
+    dispatch(fetchAgents());
+    dispatch(fetchTemplates());
+  }, [dispatch]);
 
-  const handleCreate = async (data) => {
-    await addAgent(data);
-    setShowModal(false);
+  const handleSubmit = async data => {
+    if (editingAgent) {
+      await dispatch(updateAgent({ id: editingAgent.id, data }));
+    } else {
+      await dispatch(createAgent(data));
+    }
+    setEditingAgent(null);
+  };
+
+  const handleAssign = (agentId, templateId) => dispatch(assignTemplate({ agentId, templateId }));
+  const handleUnassign = (agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId }));
+
+  const handleMatch = async (agentId, question) => {
+    try {
+      const res = await fetch(`/V1/agents/${agentId}/match/?question=${encodeURIComponent(question)}`);
+      return await res.json();
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Gestion des agents IA</h1>
-
-      <div className="mb-6">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={() => setShowModal(true)}
-        >
-          Créer un agent
-        </button>
-      </div>
-
-      {loading && <p>Chargement...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      <AgentList agents={agents} />
-
-      {showModal && <AgentFormModal onClose={() => setShowModal(false)} onSave={handleCreate} />}
+    <div className="p-4 space-y-6">
+      <h2 className="text-2xl font-bold">Agents IA</h2>
+      <AgentForm onSubmit={handleSubmit} initialData={editingAgent} templates={templates} />
+      {loading ? <Loader /> : (
+        <AgentList agents={agents} onEdit={setEditingAgent} onDelete={id => dispatch(deleteAgent(id))} />
+      )}
+      {editingAgent && (
+        <>
+          <AgentTemplates agent={editingAgent} templates={templates} onAssign={handleAssign} onUnassign={handleUnassign} />
+          <AgentMatch agent={editingAgent} onMatch={handleMatch} />
+        </>
+      )}
     </div>
   );
 }

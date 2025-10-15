@@ -3,12 +3,12 @@ export const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
   "https://achrafpapaza.pythonanywhere.com/api";
 
-export const API_PREFIX = "/V1";
-
 export const API_ENDPOINTS = {
   LOGIN: "/auth/login/",
   LOGOUT: "/auth/logout/",
   REFRESH_TOKEN: "/auth/refresh/",
-  USER: "/auth/user/",
-  AGENTS: `${API_PREFIX}/agents/`,
+  ME: "/auth/me/",
+  AGENTS: "/V1/agents/",
+  TEMPLATES: "/V1/templates/",
+  QUESTIONS: "/V1/questions_reponses/",
 };

@@ -1,51 +1,93 @@
-// src/features/agents/agentsSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import agentsService from "../../services/agentsService";
-
-/* Thunks CRUD */
-export const fetchAgents = createAsyncThunk("agents/fetch", async (_, { rejectWithValue }) => {
-  try { return await agentsService.getAgents(); }
-  catch (err) { return rejectWithValue(err?.message || "fetch failed"); }
+import api from "../../api/axiosInstance";
+import { API_ENDPOINTS } from "../../api/config";
+export const fetchAgents = createAsyncThunk("agents/fetchAll", async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.get(API_ENDPOINTS.AGENTS);
+    return response.data.results || response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
 });
 
-export const createAgent = createAsyncThunk("agents/create", async (agent, { rejectWithValue }) => {
-  try { return await agentsService.createAgent(agent); }
-  catch (err) { return rejectWithValue(err?.message || "create failed"); }
+export const createAgent = createAsyncThunk("agents/create", async (data, { rejectWithValue }) => {
+  try {
+    const response = await api.post(API_ENDPOINTS.AGENTS, data);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
 });
 
-export const updateAgent = createAsyncThunk("agents/update", async ({ id, agent }, { rejectWithValue }) => {
-  try { return await agentsService.updateAgent(id, agent); }
-  catch (err) { return rejectWithValue(err?.message || "update failed"); }
+export const updateAgent = createAsyncThunk("agents/update", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const response = await api.put(`${API_ENDPOINTS.AGENTS}${id}/`, data);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
 });
 
 export const deleteAgent = createAsyncThunk("agents/delete", async (id, { rejectWithValue }) => {
-  try { await agentsService.deleteAgent(id); return id; }
-  catch (err) { return rejectWithValue(err?.message || "delete failed"); }
+  try {
+    await api.delete(`${API_ENDPOINTS.AGENTS}${id}/`);
+    return id;
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
 });
 
-/* Slice */
+// Assign / Unassign Template
+export const assignTemplate = createAsyncThunk("agents/assignTemplate", async ({ agentId, templateId }, { rejectWithValue }) => {
+  try {
+    const response = await api.post(`${API_ENDPOINTS.AGENTS}${agentId}/assign-template/`, { template_id: templateId });
+    return { agentId, templateId };
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
+});
+
+export const unassignTemplate = createAsyncThunk("agents/unassignTemplate", async ({ agentId, templateId }, { rejectWithValue }) => {
+  try {
+    const response = await api.post(`${API_ENDPOINTS.AGENTS}${agentId}/unassign-template/`, { template_id: templateId });
+    return { agentId, templateId };
+  } catch (err) {
+    return rejectWithValue(err.response?.data);
+  }
+});
+
 const agentsSlice = createSlice({
   name: "agents",
-  initialState: { items: [], status: "idle", error: null },
-  reducers: {},
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchAgents.pending, (s) => { s.status = "loading"; s.error = null; })
-      .addCase(fetchAgents.fulfilled, (s, a) => { s.status = "succeeded"; s.items = a.payload; })
-      .addCase(fetchAgents.rejected, (s, a) => { s.status = "failed"; s.error = a.payload || a.error.message; })
-
-      .addCase(createAgent.fulfilled, (s, a) => { s.items.push(a.payload); })
-      .addCase(createAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; })
-
-      .addCase(updateAgent.fulfilled, (s, a) => {
-        const idx = s.items.findIndex((it) => it.id === a.payload.id);
-        if (idx >= 0) s.items[idx] = a.payload;
-      })
-      .addCase(updateAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; })
-
-      .addCase(deleteAgent.fulfilled, (s, a) => { s.items = s.items.filter((it) => it.id !== a.payload); })
-      .addCase(deleteAgent.rejected, (s, a) => { s.error = a.payload || a.error.message; });
+  initialState: {
+    list: [],
+    loading: false,
+    error: null,
   },
+  reducers: {},
+  extraReducers: builder => {
+    builder
+      .addCase(fetchAgents.pending, state => { state.loading = true; })
+      .addCase(fetchAgents.fulfilled, (state, action) => { state.loading = false; state.list = action.payload; })
+      .addCase(fetchAgents.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
+
+      .addCase(createAgent.fulfilled, (state, action) => { state.list.push(action.payload); })
+      .addCase(updateAgent.fulfilled, (state, action) => {
+        const idx = state.list.findIndex(a => a.id === action.payload.id);
+        if (idx >= 0) state.list[idx] = action.payload;
+      })
+      .addCase(deleteAgent.fulfilled, (state, action) => {
+        state.list = state.list.filter(a => a.id !== action.payload);
+      })
+
+      .addCase(assignTemplate.fulfilled, (state, action) => {
+        const agent = state.list.find(a => a.id === action.payload.agentId);
+        if (agent && !agent.templates.includes(action.payload.templateId)) agent.templates.push(action.payload.templateId);
+      })
+      .addCase(unassignTemplate.fulfilled, (state, action) => {
+        const agent = state.list.find(a => a.id === action.payload.agentId);
+        if (agent) agent.templates = agent.templates.filter(t => t !== action.payload.templateId);
+      });
+  }
 });
 
 export default agentsSlice.reducer;

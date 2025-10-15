@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../pages/Dashboard";
 import AgentsPage from "../pages/AgentsPage";
+import TemplatesPage from "../pages/TemplatesPage";
 import Settings from "../pages/Settings";
 import Logs from "../pages/Logs";
 import Login from "../pages/Login";
@@ -23,6 +24,7 @@ export default function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/logs" element={<Logs />} />
         </Route>
       </Route>
