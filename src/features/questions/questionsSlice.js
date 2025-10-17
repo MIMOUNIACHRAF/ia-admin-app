@@ -19,7 +19,7 @@ export const updateQuestion = createAsyncThunk(
   "questions/update",
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const res = await api.put(`/V1/questions/${id}/`, data);
+      const res = await api.put(`/V1/questions_reponses/${id}/`, data);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -31,7 +31,7 @@ export const deleteQuestion = createAsyncThunk(
   "questions/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/V1/questions/${id}/`);
+      await api.delete(`/V1/questions_reponses/${id}/`);
       return id;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
