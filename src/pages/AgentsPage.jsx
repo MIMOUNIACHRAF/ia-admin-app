@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchAgents, createAgent, updateAgent, deleteAgent, assignTemplate, unassignTemplate } from "../features/agents/agentsSlice";
+import {
+  fetchAgents,
+  createAgent,
+  updateAgent,
+  deleteAgent,
+  assignTemplate,
+  unassignTemplate,
+} from "../features/agents/agentsSlice";
 import { fetchTemplates } from "../features/templates/templatesSlice";
 import AgentList from "../components/Agent/AgentList";
 import AgentForm from "../components/Agent/AgentForm";
@@ -10,54 +17,33 @@ import Loader from "../components/common/Loader";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
-  const agentsState = useSelector(state => state.agents);
-  const templatesState = useSelector(state => state.templates);
-  const { list: agents, loading } = agentsState;
-  const { list: templates } = templatesState;
-
-  const [editingAgent, setEditingAgent] = useState(null);
+  const agentsState = useSelector(state => state.agents || { list: [], loading: false });
+  const templatesState = useSelector(state => state.templates || { list: [] });
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
   useEffect(() => {
     dispatch(fetchAgents());
     dispatch(fetchTemplates());
   }, [dispatch]);
 
-  const handleSubmit = async (data) => {
-    if(editingAgent) await dispatch(updateAgent({ id: editingAgent.id, data }));
-    else await dispatch(createAgent(data));
-    setEditingAgent(null);
+  const handleSubmit = data => {
+    if (selectedAgent) {
+      dispatch(updateAgent({ id: selectedAgent.id, data }));
+    } else {
+      dispatch(createAgent(data));
+    }
+    setSelectedAgent(null);
   };
 
   const handleAssign = (agentId, templateId) => dispatch(assignTemplate({ agentId, templateId }));
   const handleUnassign = (agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId }));
 
-  const handleMatch = async (agentId, question) => {
-    try {
-      const res = await fetch(`/V1/agents/${agentId}/match/`, {
-        method: "POST",
-        body: JSON.stringify({ question }),
-        headers: { "Content-Type": "application/json" },
-      });
-      return await res.json();
-    } catch(err) {
-      console.error(err);
-      return null;
-    }
-  };
-
-  if(!agentsState || !templatesState) return <Loader />;
-
   return (
     <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold">Agents IA</h2>
-      <AgentForm onSubmit={handleSubmit} initialData={editingAgent} templates={templates} />
-      {loading ? <Loader /> : <AgentList agents={agents} onEdit={setEditingAgent} onDelete={(id) => dispatch(deleteAgent(id))} />}
-      {editingAgent && (
-        <>
-          <AgentTemplates agent={editingAgent} templates={templates} onAssign={handleAssign} onUnassign={handleUnassign} />
-          <AgentMatch agent={editingAgent} onMatch={handleMatch} />
-        </>
-      )}
+      {agentsState.loading && <Loader />}
+      <AgentForm onSubmit={handleSubmit} initialData={selectedAgent} templates={templatesState.list} />
+      <AgentList agents={agentsState.list} onEdit={setSelectedAgent} onDelete={id => dispatch(deleteAgent(id))} />
+      {selectedAgent && <AgentTemplates agent={selectedAgent} templates={templatesState.list} onAssign={handleAssign} onUnassign={handleUnassign} />}
     </div>
   );
 }

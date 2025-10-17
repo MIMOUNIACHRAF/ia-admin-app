@@ -1,8 +1,9 @@
 import React from "react";
 
 export default function AgentTemplates({ agent, templates, onAssign, onUnassign }) {
-  const assigned = templates.filter(t => agent.templates.includes(t.id));
-  const unassigned = templates.filter(t => !agent.templates.includes(t.id));
+  const assignedIds = agent.templates.map(t => t.id);
+  const assigned = templates.filter(t => assignedIds.includes(t.id));
+  const unassigned = templates.filter(t => !assignedIds.includes(t.id));
 
   return (
     <div className="flex space-x-4">
