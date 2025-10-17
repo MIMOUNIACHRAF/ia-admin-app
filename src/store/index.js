@@ -1,4 +1,3 @@
-// src/store/index.js
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import {
   persistStore,
@@ -13,6 +12,7 @@ import {
 
 import authReducer from "../features/auth/authSlice";
 import agentsReducer from "../features/agents/agentsSlice";
+import templatesReducer from "../features/templates/templatesSlice"; // 🔹 importer
 
 import { initializeAxios, setAxiosInstance } from "../api/axiosInstance";
 import persistConfig, { authPersistConfig } from "./persistConfig";
@@ -23,6 +23,7 @@ import persistConfig, { authPersistConfig } from "./persistConfig";
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   agents: agentsReducer,
+  templates: templatesReducer, // 🔹 ajouter ici
 });
 
 /**

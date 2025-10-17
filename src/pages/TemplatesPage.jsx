@@ -10,8 +10,10 @@ import Loader from "../components/common/Loader";
 
 export default function TemplatesPage() {
   const dispatch = useDispatch();
-  const { list: templates, loading, error } = useSelector(
-    (state) => state.templates || { list: [], loading: false, error: null }
+
+  // Fallback sécurisé si state.templates est undefined
+  const { list: templates = [], loading = false, error = null } = useSelector(
+    (state) => state.templates || {}
   );
 
   const [formData, setFormData] = useState({ nom: "", description: "" });
