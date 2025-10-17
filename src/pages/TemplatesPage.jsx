@@ -9,7 +9,7 @@ import {
 } from "../features/templates/templatesSlice";
 
 import {
-  fetchQuestions,
+  fetchQuestionsByTemplate,
   createQuestion,
   updateQuestion,
   deleteQuestion
@@ -45,7 +45,7 @@ export default function TemplatesPage() {
   // Load questions pour le template sélectionné
   useEffect(() => {
     if (editingTemplate) {
-      dispatch(fetchQuestions({ templateId: editingTemplate.id }));
+      dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
     }
   }, [editingTemplate, dispatch]);
 
@@ -89,7 +89,7 @@ export default function TemplatesPage() {
     await dispatch(importTemplateQuestions({ templateId: editingTemplate.id, questions: questionsJson }));
     alert("Questions importées !");
     setJsonData("");
-    dispatch(fetchQuestions({ templateId: editingTemplate.id }));
+    dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
   };
 
   // --- QUESTION CRUD ---
@@ -107,7 +107,7 @@ export default function TemplatesPage() {
       await dispatch(createQuestion(payload));
     }
     setQuestionData({ question: "", reponse: "", ordre: 1 });
-    dispatch(fetchQuestions({ templateId: editingTemplate.id }));
+    dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
   };
 
   const handleEditQuestion = (q) => {
@@ -118,7 +118,7 @@ export default function TemplatesPage() {
   const handleDeleteQuestion = async (id) => {
     if (window.confirm("Supprimer cette question ?")) {
       await dispatch(deleteQuestion(id));
-      dispatch(fetchQuestions({ templateId: editingTemplate.id }));
+      dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
     }
   };
 
