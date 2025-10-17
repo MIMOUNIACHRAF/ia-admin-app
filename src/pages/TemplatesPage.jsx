@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchTemplates,
   createTemplate,
   updateTemplate,
   deleteTemplate,
+  importTemplateQuestions
 } from "../features/templates/templatesSlice";
 import Loader from "../components/common/Loader";
 
 export default function TemplatesPage() {
   const dispatch = useDispatch();
 
-  // Fallback sécurisé si state.templates est undefined
   const { list: templates = [], loading = false, error = null } = useSelector(
     (state) => state.templates || {}
   );
 
   const [formData, setFormData] = useState({ nom: "", description: "" });
   const [editing, setEditing] = useState(null);
+  const [jsonData, setJsonData] = useState(""); // pour importer JSON questions
 
-  // Charger les templates au montage
   useEffect(() => {
     dispatch(fetchTemplates());
   }, [dispatch]);
@@ -48,6 +48,22 @@ export default function TemplatesPage() {
     }
   };
 
+  const handleImport = async () => {
+    if (!editing) return alert("Sélectionnez un template pour importer");
+    let questions;
+    try {
+      questions = JSON.parse(jsonData);
+      if (!Array.isArray(questions)) throw new Error("JSON doit être un tableau");
+    } catch (err) {
+      return alert("JSON invalide : " + err.message);
+    }
+
+    await dispatch(importTemplateQuestions({ templateId: editing.id, questions }));
+    alert("Questions importées !");
+    setJsonData("");
+    dispatch(fetchTemplates());
+  };
+
   if (loading) return <Loader />;
   if (error)
     return (
@@ -60,7 +76,7 @@ export default function TemplatesPage() {
     <div className="p-6 space-y-6">
       <h2 className="text-2xl font-bold">📋 Gestion des Templates</h2>
 
-      {/* Formulaire */}
+      {/* Formulaire création/modification */}
       <form
         onSubmit={handleSubmit}
         className="bg-gray-100 p-4 rounded-lg flex flex-col gap-3 max-w-md"
@@ -88,7 +104,26 @@ export default function TemplatesPage() {
         </button>
       </form>
 
-      {/* Liste */}
+      {/* Import JSON */}
+      {editing && (
+        <div className="bg-gray-50 p-4 rounded max-w-md">
+          <h3 className="font-semibold mb-2">Importer JSON Questions/Réponses</h3>
+          <textarea
+            placeholder='Coller ici le JSON (ex: [{"question":"Q1","reponse":"R1","ordre":1}])'
+            value={jsonData}
+            onChange={(e) => setJsonData(e.target.value)}
+            className="border p-2 rounded w-full h-32"
+          />
+          <button
+            onClick={handleImport}
+            className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Importer JSON
+          </button>
+        </div>
+      )}
+
+      {/* Liste des templates */}
       <div className="space-y-3">
         {templates.length === 0 ? (
           <p className="text-gray-500">Aucun template trouvé.</p>
