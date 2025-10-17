@@ -14,6 +14,7 @@ import AgentForm from "../components/Agent/AgentForm";
 import AgentTemplates from "../components/Agent/AgentTemplates";
 import AgentMatch from "../components/Agent/AgentMatch";
 import Loader from "../components/common/Loader";
+import { API_ENDPOINTS } from "../api/config";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
@@ -50,7 +51,7 @@ export default function AgentsPage() {
 
   const handleMatch = async (agentId, question) => {
     try {
-      const res = await fetch(`/V1/agents/${agentId}/match/`, {
+      const res = await fetch(`${API_ENDPOINTS.AGENTS}${agentId}/match/`, {
         method: "POST",
         body: JSON.stringify({ question }),
         headers: { "Content-Type": "application/json" },
