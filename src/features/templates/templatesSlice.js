@@ -2,20 +2,29 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../api/axiosInstance";
 import { API_ENDPOINTS } from "../../api/config";
 
+// --- FETCH ALL ---
 export const fetchTemplates = createAsyncThunk(
   "templates/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get(API_ENDPOINTS.TEMPLATES);
       const data = response.data;
-      // Supporte les 2 formats de réponse
-      return Array.isArray(data) ? data : data.results || [];
+
+      // ✅ Support des 2 formats de réponse (liste directe ou paginée)
+      if (Array.isArray(data)) {
+        return { results: data, count: data.length };
+      } else if (data.results) {
+        return data;
+      } else {
+        return { results: [], count: 0 };
+      }
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
 
+// --- CREATE ---
 export const createTemplate = createAsyncThunk(
   "templates/create",
   async (data, { rejectWithValue }) => {
@@ -28,6 +37,7 @@ export const createTemplate = createAsyncThunk(
   }
 );
 
+// --- UPDATE ---
 export const updateTemplate = createAsyncThunk(
   "templates/update",
   async ({ id, data }, { rejectWithValue }) => {
@@ -40,6 +50,7 @@ export const updateTemplate = createAsyncThunk(
   }
 );
 
+// --- DELETE ---
 export const deleteTemplate = createAsyncThunk(
   "templates/delete",
   async (id, { rejectWithValue }) => {
@@ -52,37 +63,49 @@ export const deleteTemplate = createAsyncThunk(
   }
 );
 
+// --- SLICE ---
 const templatesSlice = createSlice({
   name: "templates",
   initialState: {
     list: [],
+    count: 0,
     loading: false,
     error: null,
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Fetch
       .addCase(fetchTemplates.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchTemplates.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = Array.isArray(action.payload) ? action.payload : [];
+        state.list = action.payload.results || [];
+        state.count = action.payload.count || state.list.length;
       })
       .addCase(fetchTemplates.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
+      // Create
       .addCase(createTemplate.fulfilled, (state, action) => {
-        state.list.push(action.payload);
+        state.list.unshift(action.payload);
+        state.count += 1;
       })
+
+      // Update
       .addCase(updateTemplate.fulfilled, (state, action) => {
-        const idx = state.list.findIndex((t) => t.id === action.payload.id);
-        if (idx >= 0) state.list[idx] = action.payload;
+        const index = state.list.findIndex((t) => t.id === action.payload.id);
+        if (index !== -1) state.list[index] = action.payload;
       })
+
+      // Delete
       .addCase(deleteTemplate.fulfilled, (state, action) => {
         state.list = state.list.filter((t) => t.id !== action.payload);
+        state.count -= 1;
       });
   },
 });
