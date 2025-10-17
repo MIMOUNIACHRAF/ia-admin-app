@@ -14,17 +14,20 @@ import AgentForm from "../components/Agent/AgentForm";
 import AgentTemplates from "../components/Agent/AgentTemplates";
 import AgentMatch from "../components/Agent/AgentMatch";
 import Loader from "../components/common/Loader";
-import { API_ENDPOINTS } from "../api/config";
+// import { API_BASE_URL, API_ENDPOINTS } from "../api/config";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
   const agentsState = useSelector(state => state.agents);
   const templatesState = useSelector(state => state.templates);
+  const authState = useSelector(state => state.auth); // accessToken + refreshToken
 
   const { list: agents = [], loading: agentsLoading } = agentsState || {};
   const { list: templates = [], loading: templatesLoading } = templatesState || {};
+  const { accessToken, refreshToken } = authState || {};
 
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [matching, setMatching] = useState(false); // loader pour handleMatch
 
   // charger agents et templates
   useEffect(() => {
@@ -32,7 +35,7 @@ export default function AgentsPage() {
     dispatch(fetchTemplates());
   }, [dispatch]);
 
-  // synchroniser selectedAgent avec Redux après update
+  // synchroniser selectedAgent après update
   useEffect(() => {
     if (selectedAgent) {
       const updated = agents.find(a => a.id === selectedAgent.id);
@@ -46,19 +49,36 @@ export default function AgentsPage() {
     setSelectedAgent(null);
   };
 
-  const handleAssign = (agentId, templateId) => dispatch(assignTemplate({ agentId, templateId }));
-  const handleUnassign = (agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId }));
+  const handleAssign = (agentId, templateId) =>
+    dispatch(assignTemplate({ agentId, templateId }));
+  const handleUnassign = (agentId, templateId) =>
+    dispatch(unassignTemplate({ agentId, templateId }));
 
   const handleMatch = async (agentId, question) => {
+    if (!accessToken || !refreshToken) {
+      console.error("Tokens manquants, veuillez vous reconnecter.");
+      return null;
+    }
+
+    setMatching(true);
     try {
-      const res = await fetch(`https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`, {
-        method: "POST",
-        body: JSON.stringify({ question }),
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        `https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "x-refresh-token": refreshToken,
+          },
+          body: JSON.stringify({ question }),
+          credentials: "include", // si le refresh token est aussi en cookie
+        }
+      );
 
       if (!res.ok) {
-        console.error(`Erreur HTTP: ${res.status} ${res.statusText}`);
+        const errorData = await res.json();
+        console.error(`Erreur HTTP: ${res.status}`, errorData);
         return null;
       }
 
@@ -66,9 +86,10 @@ export default function AgentsPage() {
     } catch (err) {
       console.error("Erreur fetch handleMatch:", err);
       return null;
+    } finally {
+      setMatching(false);
     }
-};
-
+  };
 
   if (agentsLoading || templatesLoading) return <Loader />;
 
@@ -96,7 +117,11 @@ export default function AgentsPage() {
             onAssign={handleAssign}
             onUnassign={handleUnassign}
           />
-          <AgentMatch agent={selectedAgent} onMatch={handleMatch} />
+          <AgentMatch
+            agent={selectedAgent}
+            onMatch={handleMatch}
+            loading={matching} // passe le loader à AgentMatch
+          />
         </>
       )}
     </div>
