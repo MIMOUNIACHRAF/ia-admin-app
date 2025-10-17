@@ -58,14 +58,23 @@ export default function AgentsPage() {
     dispatch(unassignTemplate({ agentId, templateId }));
 
   const handleMatch = async (agentId, question) => {
-    try {
-      const res = await api.post(`https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`, { question });
-      return res.data;
-    } catch (err) {
-      console.error("Erreur handleMatch:", err.response?.data || err.message);
-      return null;
+  try {
+    const res = await api.post(
+      `https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`,
+      { question }
+    );
+
+    if (res.status === 204) {
+      return { source: "llm", detail: "Aucun match local trouvé." };
     }
-  };
+
+    return res.data; // status 200 avec match
+  } catch (err) {
+    console.error("Erreur handleMatch:", err.response?.data || err.message);
+    return null;
+  }
+};
+
 
   if (agentsLoading || templatesLoading) return <Loader />;
 
