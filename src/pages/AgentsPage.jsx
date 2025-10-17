@@ -51,17 +51,24 @@ export default function AgentsPage() {
 
   const handleMatch = async (agentId, question) => {
     try {
-      const res = await fetch(`${API_ENDPOINTS.AGENTS}${agentId}/match/`, {
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AGENTS}${agentId}/match/`, {
         method: "POST",
         body: JSON.stringify({ question }),
         headers: { "Content-Type": "application/json" },
       });
+
+      if (!res.ok) {
+        console.error(`Erreur HTTP: ${res.status} ${res.statusText}`);
+        return null;
+      }
+
       return await res.json();
     } catch (err) {
-      console.error(err);
+      console.error("Erreur fetch handleMatch:", err);
       return null;
     }
-  };
+};
+
 
   if (agentsLoading || templatesLoading) return <Loader />;
 
