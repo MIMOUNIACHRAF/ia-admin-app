@@ -14,16 +14,14 @@ import AgentForm from "../components/Agent/AgentForm";
 import AgentTemplates from "../components/Agent/AgentTemplates";
 import AgentMatch from "../components/Agent/AgentMatch";
 import Loader from "../components/common/Loader";
+import { motion, AnimatePresence } from "framer-motion";
+import { ToastContainer } from "react-toastify";
 import api from "../api/axiosInstance";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
-  const agentsState = useSelector(state => state.agents);
-  const templatesState = useSelector(state => state.templates);
-  const authState = useSelector(state => state.auth);
-
-  const { list: agents = [], loading: agentsLoading } = agentsState || {};
-  const { list: templates = [], loading: templatesLoading } = templatesState || {};
+  const { list: agents = [], loading: agentsLoading } = useSelector(state => state.agents) || {};
+  const { list: templates = [], loading: templatesLoading } = useSelector(state => state.templates) || {};
 
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [matching, setMatching] = useState(false);
@@ -66,76 +64,61 @@ export default function AgentsPage() {
   if (agentsLoading || templatesLoading) return <Loader />;
 
   return (
-  <div className="max-w-7xl mx-auto p-6 space-y-8 relative">
-    <ToastContainer position="top-right" autoClose={3000} />
+    <div className="max-w-7xl mx-auto p-6 space-y-8 relative">
+      <ToastContainer position="top-right" autoClose={3000} />
 
-    <h2 className="text-3xl font-extrabold text-gray-800">🤖 Agents IA</h2>
+      <h2 className="text-3xl font-extrabold text-gray-800 mb-4">🤖 Agents IA</h2>
 
-    {/* --- FORMULAIRE AGENT --- */}
-    <motion.div
-      className="bg-white shadow-lg rounded-2xl p-6"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <AgentForm
-        onSubmit={handleSubmit}
-        initialData={selectedAgent}
-        templates={templates}
-      />
-    </motion.div>
+      {/* --- FORMULAIRE AGENT --- */}
+      <motion.div
+        className="bg-white shadow-lg rounded-2xl p-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <AgentForm onSubmit={handleSubmit} initialData={selectedAgent} templates={templates} />
+      </motion.div>
 
-    {/* --- LISTE AGENTS --- */}
-    <motion.div
-      className="bg-white shadow-lg rounded-2xl p-6"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <AgentList
-        agents={agents}
-        onEdit={setSelectedAgent}
-        onDelete={(id) => dispatch(deleteAgent(id))}
-      />
-    </motion.div>
+      {/* --- LISTE AGENTS --- */}
+      <motion.div
+        className="bg-white shadow-lg rounded-2xl p-6"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <AgentList agents={agents} onEdit={setSelectedAgent} onDelete={(id) => dispatch(deleteAgent(id))} />
+      </motion.div>
 
-    {/* --- SECTION DETAILS AGENT --- */}
-    {selectedAgent && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Templates Assignés */}
-        <motion.div
-          className="bg-white shadow-lg rounded-2xl p-6"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Templates assignés</h3>
-          <AgentTemplates
-            agent={selectedAgent}
-            templates={templates}
-            onAssign={handleAssign}
-            onUnassign={handleUnassign}
-          />
-        </motion.div>
+      {/* --- DETAILS AGENT --- */}
+      {selectedAgent && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <motion.div
+            className="bg-white shadow-lg rounded-2xl p-6"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Templates assignés</h3>
+            <AgentTemplates
+              agent={selectedAgent}
+              templates={templates}
+              onAssign={handleAssign}
+              onUnassign={handleUnassign}
+            />
+          </motion.div>
 
-        {/* Matching Questions */}
-        <motion.div
-          className="bg-white shadow-lg rounded-2xl p-6"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Test & Match Questions</h3>
-          {matching && (
-            <div className="flex justify-center items-center mb-4">
-              <Loader />
-            </div>
-          )}
-          <AgentMatch
-            agent={selectedAgent}
-            onMatch={handleMatch}
-            loading={matching}
-          />
-        </motion.div>
-      </div>
-    )}
-  </div>
-);
-
+          <motion.div
+            className="bg-white shadow-lg rounded-2xl p-6"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Test & Match Questions</h3>
+            {matching && (
+              <div className="flex justify-center items-center mb-4">
+                <Loader />
+              </div>
+            )}
+            <AgentMatch agent={selectedAgent} onMatch={handleMatch} loading={matching} />
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
 }
