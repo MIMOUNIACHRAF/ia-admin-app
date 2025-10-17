@@ -15,6 +15,9 @@ import AgentTemplates from "../components/Agent/AgentTemplates";
 import AgentMatch from "../components/Agent/AgentMatch";
 import Loader from "../components/common/Loader";
 // import { API_BASE_URL, API_ENDPOINTS } from "../api/config";
+import api from "../api/axiosInstance"; // ton axios avec auth intégré
+
+
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
@@ -55,39 +58,12 @@ export default function AgentsPage() {
     dispatch(unassignTemplate({ agentId, templateId }));
 
   const handleMatch = async (agentId, question) => {
-    if (!accessToken || !refreshToken) {
-      console.error("Tokens manquants, veuillez vous reconnecter.");
-      return null;
-    }
-
-    setMatching(true);
     try {
-      const res = await fetch(
-        `https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "x-refresh-token": refreshToken,
-          },
-          body: JSON.stringify({ question }),
-          credentials: "include", // si le refresh token est aussi en cookie
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error(`Erreur HTTP: ${res.status}`, errorData);
-        return null;
-      }
-
-      return await res.json();
+      const res = await api.post(`https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`, { question });
+      return res.data;
     } catch (err) {
-      console.error("Erreur fetch handleMatch:", err);
+      console.error("Erreur handleMatch:", err.response?.data || err.message);
       return null;
-    } finally {
-      setMatching(false);
     }
   };
 
