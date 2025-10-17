@@ -1,26 +1,14 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../api/axiosInstance";
 
-// Fetch questions par template
-export const fetchQuestionsByTemplate = createAsyncThunk(
-  "questions/fetchByTemplate",
-  async (templateId, { rejectWithValue }) => {
-    try {
-      const res = await api.get(`/V1/templates/${templateId}/`);
-      return res.data.questions_reponses || [];
-    } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
-    }
-  }
-);
-
-// CRUD questions individuelles
+// --- CREATE / UPDATE / DELETE QUESTIONS ---
 export const createQuestion = createAsyncThunk(
   "questions/create",
   async ({ templateId, questionData }, { rejectWithValue }) => {
     try {
       const res = await api.post(`/V1/templates/${templateId}/import-questions/`, { questions: [questionData] });
-      return { ...questionData, id: res.data.createdId }; // adapter selon backend
+      // backend retourne juste le nombre de questions créées, on peut injecter un id fictif si nécessaire
+      return { ...questionData, id: res.data.createdId || Date.now(), template: templateId };
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
@@ -57,10 +45,6 @@ const questionsSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchQuestionsByTemplate.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(fetchQuestionsByTemplate.fulfilled, (state, action) => { state.loading = false; state.list = action.payload; })
-      .addCase(fetchQuestionsByTemplate.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-
       .addCase(createQuestion.fulfilled, (state, action) => { state.list.push(action.payload); })
       .addCase(updateQuestion.fulfilled, (state, action) => {
         const idx = state.list.findIndex(q => q.id === action.payload.id);
@@ -69,7 +53,7 @@ const questionsSlice = createSlice({
       .addCase(deleteQuestion.fulfilled, (state, action) => {
         state.list = state.list.filter(q => q.id !== action.payload);
       });
-  },
+  }
 });
 
 export default questionsSlice.reducer;
