@@ -44,8 +44,8 @@ export default function TemplatesPage() {
 
   // Load questions pour le template sélectionné
   useEffect(() => {
-    if (editingTemplate) {
-      dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
+    if (editingTemplate?.id) {
+      dispatch(fetchQuestionsByTemplate(editingTemplate.id));
     }
   }, [editingTemplate, dispatch]);
 
@@ -71,13 +71,13 @@ export default function TemplatesPage() {
   const handleDeleteTemplate = async (id) => {
     if (window.confirm("Supprimer ce template ?")) {
       await dispatch(deleteTemplate(id));
-      if (editingTemplate && editingTemplate.id === id) setEditingTemplate(null);
+      if (editingTemplate?.id === id) setEditingTemplate(null);
     }
   };
 
   // --- IMPORT JSON QUESTIONS ---
   const handleImport = async () => {
-    if (!editingTemplate) return alert("Sélectionnez un template pour importer");
+    if (!editingTemplate?.id) return alert("Sélectionnez un template pour importer");
     let questionsJson;
     try {
       questionsJson = JSON.parse(jsonData);
@@ -89,25 +89,24 @@ export default function TemplatesPage() {
     await dispatch(importTemplateQuestions({ templateId: editingTemplate.id, questions: questionsJson }));
     alert("Questions importées !");
     setJsonData("");
-    dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
+    dispatch(fetchQuestionsByTemplate(editingTemplate.id));
   };
 
   // --- QUESTION CRUD ---
   const handleSubmitQuestion = async (e) => {
     e.preventDefault();
-    if (!editingTemplate) return alert("Sélectionnez un template");
+    if (!editingTemplate?.id) return alert("Sélectionnez un template");
     if (!questionData.question.trim()) return alert("Question requise");
 
-    const payload = { ...questionData, template: editingTemplate.id };
-
     if (editingQuestion) {
-      await dispatch(updateQuestion({ id: editingQuestion.id, data: payload }));
+      await dispatch(updateQuestion({ id: editingQuestion.id, data: { ...questionData, templateId: editingTemplate.id } }));
       setEditingQuestion(null);
     } else {
-      await dispatch(createQuestion(payload));
+      await dispatch(createQuestion({ templateId: editingTemplate.id, questionData }));
     }
+
     setQuestionData({ question: "", reponse: "", ordre: 1 });
-    dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
+    dispatch(fetchQuestionsByTemplate(editingTemplate.id));
   };
 
   const handleEditQuestion = (q) => {
@@ -118,7 +117,7 @@ export default function TemplatesPage() {
   const handleDeleteQuestion = async (id) => {
     if (window.confirm("Supprimer cette question ?")) {
       await dispatch(deleteQuestion(id));
-      dispatch(fetchQuestionsByTemplate({ templateId: editingTemplate.id }));
+      dispatch(fetchQuestionsByTemplate(editingTemplate.id));
     }
   };
 
@@ -159,9 +158,7 @@ export default function TemplatesPage() {
         {templates.map((t) => (
           <div
             key={t.id}
-            className={`flex justify-between items-center p-3 rounded shadow ${
-              editingTemplate?.id === t.id ? "bg-yellow-50" : "bg-white"
-            }`}
+            className={`flex justify-between items-center p-3 rounded shadow ${editingTemplate?.id === t.id ? "bg-yellow-50" : "bg-white"}`}
           >
             <div>
               <h3 className="font-semibold">{t.nom}</h3>
@@ -185,7 +182,10 @@ export default function TemplatesPage() {
             onChange={(e) => setJsonData(e.target.value)}
             className="border p-2 rounded w-full h-32"
           />
-          <button onClick={handleImport} className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+          <button
+            onClick={handleImport}
+            className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
             Importer JSON
           </button>
         </div>
