@@ -6,21 +6,42 @@ export default function TemplateForm({ onSubmit, initialData }) {
 
   useEffect(() => {
     if (initialData) {
-      setNom(initialData.nom);
-      setDescription(initialData.description);
+      setNom(initialData.nom || "");
+      setDescription(initialData.description || "");
+    } else {
+      setNom("");
+      setDescription("");
     }
   }, [initialData]);
 
-  const handleSubmit = e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit({ nom, description });
+    await onSubmit({ nom, description });
+    setNom("");
+    setDescription("");
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom" className="w-full border px-3 py-2 rounded" required />
-      <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" className="w-full border px-3 py-2 rounded" />
-      <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Enregistrer</button>
+      <input
+        value={nom}
+        onChange={(e) => setNom(e.target.value)}
+        placeholder="Nom du template"
+        className="w-full border px-3 py-2 rounded"
+        required
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Description"
+        className="w-full border px-3 py-2 rounded"
+      />
+      <button
+        type="submit"
+        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        {initialData ? "Mettre à jour" : "Enregistrer"}
+      </button>
     </form>
   );
 }

@@ -13,25 +13,21 @@ import Loader from "../components/common/Loader";
 export default function TemplatesPage() {
   const dispatch = useDispatch();
 
-  // Récupération sécurisée de l'état Redux
-  const templatesState = useSelector(
-    (state) =>
-      state.templates || {
-        list: [],
-        loading: false,
-        error: null,
-      }
-  );
+  const { list: templates, loading, error } = useSelector((state) => state.templates);
 
-  const { list: templates, loading, error } = templatesState;
   const [editingTemplate, setEditingTemplate] = useState(null);
 
-  // Chargement initial
+  // Charger les templates au montage
   useEffect(() => {
     dispatch(fetchTemplates());
   }, [dispatch]);
 
-  // Soumission formulaire
+  // Fonction pour recharger après chaque action
+  const refreshTemplates = async () => {
+    await dispatch(fetchTemplates());
+  };
+
+  // Soumission du formulaire
   const handleSubmit = async (data) => {
     if (editingTemplate) {
       await dispatch(updateTemplate({ id: editingTemplate.id, data }));
@@ -39,16 +35,23 @@ export default function TemplatesPage() {
       await dispatch(createTemplate(data));
     }
     setEditingTemplate(null);
+    await refreshTemplates(); // rechargement automatique
   };
 
-  // Suppression
+  // Suppression d’un template
   const handleDelete = async (id) => {
     if (window.confirm("Confirmer la suppression de ce template ?")) {
       await dispatch(deleteTemplate(id));
+      await refreshTemplates(); // rechargement automatique
     }
   };
 
-  // --- affichages conditionnels ---
+  // Logs debug
+  useEffect(() => {
+    console.log("Templates chargés :", templates);
+  }, [templates]);
+
+  // États d’affichage
   if (loading) return <Loader />;
 
   if (error) {
@@ -68,7 +71,7 @@ export default function TemplatesPage() {
 
       <TemplateForm onSubmit={handleSubmit} initialData={editingTemplate} />
 
-      {templates.length === 0 ? (
+      {!templates || templates.length === 0 ? (
         <p className="text-gray-500 italic">Aucun template disponible.</p>
       ) : (
         <TemplateList
