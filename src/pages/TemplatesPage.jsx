@@ -1,3 +1,4 @@
+// src/pages/TemplatesPage.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -6,80 +7,113 @@ import {
   updateTemplate,
   deleteTemplate,
 } from "../features/templates/templatesSlice";
-import TemplateList from "../components/Templates/TemplateList";
-import TemplateForm from "../components/Templates/TemplateForm";
 import Loader from "../components/common/Loader";
 
 export default function TemplatesPage() {
   const dispatch = useDispatch();
+  const { list: templates, loading, error } = useSelector(
+    (state) => state.templates || { list: [], loading: false, error: null }
+  );
 
-  const { list: templates, loading, error } = useSelector((state) => state.templates);
-
-  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [formData, setFormData] = useState({ nom: "", description: "" });
+  const [editing, setEditing] = useState(null);
 
   // Charger les templates au montage
   useEffect(() => {
     dispatch(fetchTemplates());
   }, [dispatch]);
 
-  // Fonction pour recharger après chaque action
-  const refreshTemplates = async () => {
-    await dispatch(fetchTemplates());
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.nom.trim()) return alert("Nom requis");
 
-  // Soumission du formulaire
-  const handleSubmit = async (data) => {
-    if (editingTemplate) {
-      await dispatch(updateTemplate({ id: editingTemplate.id, data }));
+    if (editing) {
+      await dispatch(updateTemplate({ id: editing.id, data: formData }));
+      setEditing(null);
     } else {
-      await dispatch(createTemplate(data));
+      await dispatch(createTemplate(formData));
     }
-    setEditingTemplate(null);
-    await refreshTemplates(); // rechargement automatique
+    setFormData({ nom: "", description: "" });
   };
 
-  // Suppression d’un template
+  const handleEdit = (template) => {
+    setEditing(template);
+    setFormData({ nom: template.nom, description: template.description });
+  };
+
   const handleDelete = async (id) => {
-    if (window.confirm("Confirmer la suppression de ce template ?")) {
+    if (window.confirm("Supprimer ce template ?")) {
       await dispatch(deleteTemplate(id));
-      await refreshTemplates(); // rechargement automatique
     }
   };
 
-  // Logs debug
-  useEffect(() => {
-    console.log("Templates chargés :", templates);
-  }, [templates]);
-
-  // États d’affichage
   if (loading) return <Loader />;
-
-  if (error) {
-    return (
-      <div className="p-4 text-red-600">
-        <h2 className="font-bold mb-2">Erreur de chargement</h2>
-        <pre className="bg-red-100 p-2 rounded text-sm">
-          {JSON.stringify(error, null, 2)}
-        </pre>
-      </div>
-    );
-  }
+  if (error) return <div className="text-red-600 p-4">Erreur : {error.detail || String(error)}</div>;
 
   return (
-    <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Templates</h2>
+    <div className="p-6 space-y-6">
+      <h2 className="text-2xl font-bold">📋 Gestion des Templates</h2>
 
-      <TemplateForm onSubmit={handleSubmit} initialData={editingTemplate} />
-
-      {!templates || templates.length === 0 ? (
-        <p className="text-gray-500 italic">Aucun template disponible.</p>
-      ) : (
-        <TemplateList
-          templates={templates}
-          onEdit={setEditingTemplate}
-          onDelete={handleDelete}
+      {/* Formulaire */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-gray-100 p-4 rounded-lg flex flex-col gap-3 max-w-md"
+      >
+        <input
+          type="text"
+          placeholder="Nom du template"
+          value={formData.nom}
+          onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+          className="border p-2 rounded"
         />
-      )}
+        <textarea
+          placeholder="Description"
+          value={formData.description}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
+          className="border p-2 rounded"
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          {editing ? "Modifier" : "Ajouter"}
+        </button>
+      </form>
+
+      {/* Liste */}
+      <div className="space-y-3">
+        {templates.length === 0 ? (
+          <p className="text-gray-500">Aucun template trouvé.</p>
+        ) : (
+          templates.map((t) => (
+            <div
+              key={t.id}
+              className="flex justify-between items-center bg-white shadow p-3 rounded"
+            >
+              <div>
+                <h3 className="font-semibold">{t.nom}</h3>
+                <p className="text-gray-600 text-sm">{t.description}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleEdit(t)}
+                  className="text-blue-600 hover:underline"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="text-red-600 hover:underline"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
