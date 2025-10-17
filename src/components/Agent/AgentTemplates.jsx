@@ -1,30 +1,47 @@
-import React from "react";
+export default function AgentsPage() {
+  const dispatch = useDispatch();
+  const agentsState = useSelector(state => state.agents || { list: [], loading: false });
+  const templatesState = useSelector(state => state.templates || { list: [] });
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
-export default function AgentTemplates({ agent, templates, onAssign, onUnassign }) {
-  const assignedIds = agent.templates.map(t => t.id);
-  const assigned = templates.filter(t => assignedIds.includes(t.id));
-  const unassigned = templates.filter(t => !assignedIds.includes(t.id));
+  useEffect(() => {
+    dispatch(fetchAgents());
+    dispatch(fetchTemplates());
+  }, [dispatch]);
+
+  // synchroniser selectedAgent avec les changements de Redux
+  useEffect(() => {
+    if (selectedAgent) {
+      const updated = agentsState.list.find(a => a.id === selectedAgent.id);
+      if (updated) setSelectedAgent(updated);
+    }
+  }, [agentsState.list, selectedAgent]);
+
+  const handleSubmit = data => {
+    if (selectedAgent) {
+      dispatch(updateAgent({ id: selectedAgent.id, data }));
+    } else {
+      dispatch(createAgent(data));
+    }
+    setSelectedAgent(null);
+  };
+
+  const handleAssign = (agentId, templateId) => dispatch(assignTemplate({ agentId, templateId }));
+  const handleUnassign = (agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId }));
 
   return (
-    <div className="flex space-x-4">
-      <div className="flex-1 border p-3 rounded">
-        <h4 className="font-bold mb-2">Assigné</h4>
-        {assigned.map(t => (
-          <div key={t.id} className="flex justify-between items-center mb-1">
-            <span>{t.nom}</span>
-            <button onClick={() => onUnassign(agent.id, t.id)} className="px-2 py-1 bg-red-500 text-white rounded">Retirer</button>
-          </div>
-        ))}
-      </div>
-      <div className="flex-1 border p-3 rounded">
-        <h4 className="font-bold mb-2">Disponible</h4>
-        {unassigned.map(t => (
-          <div key={t.id} className="flex justify-between items-center mb-1">
-            <span>{t.nom}</span>
-            <button onClick={() => onAssign(agent.id, t.id)} className="px-2 py-1 bg-green-500 text-white rounded">Assigner</button>
-          </div>
-        ))}
-      </div>
+    <div className="p-4 space-y-6">
+      {agentsState.loading && <Loader />}
+      <AgentForm onSubmit={handleSubmit} initialData={selectedAgent} templates={templatesState.list} />
+      <AgentList agents={agentsState.list} onEdit={setSelectedAgent} onDelete={id => dispatch(deleteAgent(id))} />
+      {selectedAgent && (
+        <AgentTemplates
+          agent={selectedAgent}
+          templates={templatesState.list}
+          onAssign={handleAssign}
+          onUnassign={handleUnassign}
+        />
+      )}
     </div>
   );
 }
