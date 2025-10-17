@@ -10,13 +10,14 @@ import Loader from "../components/common/Loader";
 
 export default function TemplatesPage() {
   const dispatch = useDispatch();
-  const { list: templates, loading, error, count } = useSelector(
-    (state) => state.templates || { list: [], loading: false, error: null, count: 0 }
+  const { list: templates, loading, error } = useSelector(
+    (state) => state.templates || { list: [], loading: false, error: null }
   );
 
   const [formData, setFormData] = useState({ nom: "", description: "" });
   const [editing, setEditing] = useState(null);
 
+  // Charger les templates au montage
   useEffect(() => {
     dispatch(fetchTemplates());
   }, [dispatch]);
@@ -31,7 +32,6 @@ export default function TemplatesPage() {
     } else {
       await dispatch(createTemplate(formData));
     }
-
     setFormData({ nom: "", description: "" });
   };
 
@@ -50,18 +50,13 @@ export default function TemplatesPage() {
   if (error)
     return (
       <div className="text-red-600 p-4">
-        Erreur : {error.detail || JSON.stringify(error)}
+        Erreur : {error.detail || String(error)}
       </div>
     );
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">📋 Gestion des Templates</h2>
-        <span className="text-gray-600 text-sm">
-          {count} template{count > 1 ? "s" : ""}
-        </span>
-      </div>
+      <h2 className="text-2xl font-bold">📋 Gestion des Templates</h2>
 
       {/* Formulaire */}
       <form
