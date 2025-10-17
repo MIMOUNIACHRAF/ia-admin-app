@@ -158,102 +158,111 @@ export default function TemplatesPageModern() {
   };
 
   return (
-    <div className="p-6 space-y-6 relative">
-      <ToastContainer position="top-right" autoClose={3000} />
-      {loading && (
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-50">
-          <Loader />
-        </div>
-      )}
+  <div className="p-6 space-y-6 relative">
+    <ToastContainer position="top-right" autoClose={3000} />
+    
+    {/* Loader overlay */}
+    {loading && (
+      <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-50 rounded-2xl">
+        <Loader />
+      </div>
+    )}
 
-      <h2 className="text-3xl font-bold text-gray-800">📋 Gestion des Templates & Questions</h2>
+    <h2 className="text-3xl font-bold text-gray-800">📋 Gestion des Templates & Questions</h2>
 
-      {/* --- TEMPLATE FORM --- */}
-      <motion.form
-        onSubmit={handleSubmitTemplate}
-        className="bg-gray-50 p-6 rounded-2xl shadow-lg max-w-md flex flex-col gap-4"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
+    {/* --- TEMPLATE FORM --- */}
+    <motion.form
+      onSubmit={handleSubmitTemplate}
+      className="bg-gray-50 p-6 rounded-2xl shadow-lg max-w-md flex flex-col gap-4"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <input
+        type="text"
+        placeholder="Nom du template"
+        value={templateForm.nom}
+        onChange={(e) => setTemplateForm({ ...templateForm, nom: e.target.value })}
+        className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
+      />
+      <textarea
+        placeholder="Description"
+        value={templateForm.description}
+        onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+        className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
+      />
+      <button
+        type="submit"
+        className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition transform hover:scale-105 active:scale-95"
       >
-        <input
-          type="text"
-          placeholder="Nom du template"
-          value={templateForm.nom}
-          onChange={(e) => setTemplateForm({ ...templateForm, nom: e.target.value })}
-          className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
-        />
-        <textarea
-          placeholder="Description"
-          value={templateForm.description}
-          onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
-          className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
-        />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition transform hover:scale-105"
-        >
-          {editingTemplate ? "Modifier Template" : "Ajouter Template"}
-        </button>
-      </motion.form>
+        {editingTemplate ? "Modifier Template" : "Ajouter Template"}
+      </button>
+    </motion.form>
 
-      {/* --- TEMPLATE LIST --- */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <AnimatePresence>
-          {templates.map((t) => (
-            <motion.div
-              key={t.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className={`bg-white rounded-2xl shadow-lg p-4 flex flex-col justify-between hover:scale-105 transition cursor-pointer`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-lg">{t.nom}</h3>
-                  <p className="text-gray-500 text-sm">{t.description}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEditTemplate(t)} className="text-yellow-500 hover:text-yellow-600">
-                    ✏️
-                  </button>
-                  <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-600">
-                    🗑️
-                  </button>
-                </div>
+    {/* --- TEMPLATE LIST --- */}
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <AnimatePresence>
+        {templates.map((t) => (
+          <motion.div
+            key={t.id}
+            layout
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              backgroundColor: editingTemplate?.id === t.id ? "#FEF9C3" : "#ffffff"
+            }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="rounded-2xl shadow-lg p-4 flex flex-col justify-between hover:scale-105 transition cursor-pointer"
+          >
+            {/* Template Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-bold text-lg">{t.nom}</h3>
+                <p className="text-gray-500 text-sm">{t.description}</p>
               </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleEditTemplate(t)} className="text-yellow-500 hover:text-yellow-600">✏️</button>
+                <button onClick={() => handleDeleteTemplate(t.id)} className="text-red-500 hover:text-red-600">🗑️</button>
+              </div>
+            </div>
 
-              {/* --- QUESTIONS LIST --- */}
-              <AnimatePresence>
-                {editingTemplate?.id === t.id && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 space-y-2 overflow-hidden"
-                  >
-                    {t.questions_reponses?.map((q) => (
-                      <motion.div
-                        key={q.id}
-                        layout
-                        className="flex justify-between items-center p-3 bg-gray-50 rounded-xl shadow-sm"
-                      >
-                        <span>
-                          {q.ordre}. {q.question} → {q.reponse}
-                        </span>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEditQuestion(q)} className="text-blue-500 hover:text-blue-600">
-                            ✏️
-                          </button>
-                          <button onClick={() => handleDeleteQuestion(q.id)} className="text-red-500 hover:text-red-600">
-                            🗑️
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
+            {/* --- QUESTIONS LIST --- */}
+            <AnimatePresence>
+              {editingTemplate?.id === t.id && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 space-y-2 overflow-hidden"
+                >
+                  {t.questions_reponses?.map((q) => (
+                    <motion.div
+                      key={q.id}
+                      layout
+                      className="flex flex-col md:flex-row justify-between items-start p-3 bg-gray-50 rounded-xl shadow-sm gap-2"
+                    >
+                      {/* Question */}
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-700">{q.ordre}. {q.question}</p>
+                      </div>
 
-                    {/* --- FORM ADD / EDIT QUESTION --- */}
-                    <form onSubmit={handleSubmitQuestion} className="flex flex-col gap-2 mt-2">
+                      {/* Réponse */}
+                      <div className="flex-1 text-right mt-2 md:mt-0">
+                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">{q.reponse}</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 mt-2 md:mt-0">
+                        <button onClick={() => handleEditQuestion(q)} className="text-blue-500 hover:text-blue-600">✏️</button>
+                        <button onClick={() => handleDeleteQuestion(q.id)} className="text-red-500 hover:text-red-600">🗑️</button>
+                      </div>
+                    </motion.div>
+                  ))}
+
+                  {/* --- FORM ADD / EDIT QUESTION --- */}
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <h4 className="text-lg font-semibold mb-2">Ajouter / Modifier Question</h4>
+                    <form onSubmit={handleSubmitQuestion} className="flex flex-col gap-2">
                       <input
                         placeholder="Question"
                         value={questionForm.question}
@@ -272,33 +281,38 @@ export default function TemplatesPageModern() {
                         onChange={(e) => setQuestionForm({ ...questionForm, ordre: Number(e.target.value) })}
                         className="border p-3 rounded-xl focus:ring-2 focus:ring-green-400 transition"
                       />
-                      <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition transform hover:scale-105">
+                      <button
+                        type="submit"
+                        className="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition transform hover:scale-105 active:scale-95"
+                      >
                         {editingQuestion ? "Modifier Question" : "Ajouter Question"}
                       </button>
                     </form>
+                  </div>
 
-                    {/* --- IMPORT JSON --- */}
-                    <div className="mt-4">
-                      <textarea
-                        placeholder='Ex: [{"question":"Q1","reponse":"R1","ordre":1}]'
-                        value={jsonData}
-                        onChange={(e) => setJsonData(e.target.value)}
-                        className="border p-3 rounded-xl w-full h-32 bg-gray-50 focus:ring-2 focus:ring-purple-400 transition"
-                      />
-                      <button
-                        onClick={handleImport}
-                        className="mt-2 bg-purple-500 text-white px-4 py-2 rounded-xl hover:bg-purple-600 transition transform hover:scale-105"
-                      >
-                        Importer JSON
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+                  {/* --- IMPORT JSON --- */}
+                  <div className="mt-4">
+                    <textarea
+                      placeholder='Ex: [{"question":"Q1","reponse":"R1","ordre":1}]'
+                      value={jsonData}
+                      onChange={(e) => setJsonData(e.target.value)}
+                      className="border p-3 rounded-xl w-full h-32 bg-gray-50 focus:ring-2 focus:ring-purple-400 transition"
+                    />
+                    <button
+                      onClick={handleImport}
+                      className="mt-2 bg-purple-500 text-white px-4 py-2 rounded-xl hover:bg-purple-600 transition transform hover:scale-105 active:scale-95"
+                    >
+                      Importer JSON
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
-  );
+  </div>
+);
+
 }
