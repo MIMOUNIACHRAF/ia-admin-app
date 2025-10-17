@@ -7,7 +7,8 @@ import {
   FileText,
   LogOut,
   X,
-} from "lucide-react";
+  File,
+} from "lucide-react"; // ajout File pour Templates
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authThunks";
 import { useState } from "react";
@@ -16,6 +17,7 @@ const menu = [
   { label: "Accueil", icon: <HomeIcon size={20} />, to: "/" },
   { label: "Dashboard", icon: <LayoutDashboard size={20} />, to: "/dashboard" },
   { label: "Agents", icon: <Users size={20} />, to: "/agents" },
+  { label: "Templates", icon: <File size={20} />, to: "/templates" }, // ← nouvel élément
   { label: "Paramètres", icon: <Settings size={20} />, to: "/settings" },
   { label: "Logs", icon: <FileText size={20} />, to: "/logs" },
 ];
@@ -27,11 +29,10 @@ export default function Sidebar({ onClose }) {
   const [loadingLogout, setLoadingLogout] = useState(false);
 
   const handleLogout = async () => {
-    if (loadingLogout) return; // éviter double clic
+    if (loadingLogout) return;
     setLoadingLogout(true);
-
     try {
-      await dispatch(logout()).unwrap(); // unwrap pour gérer l'erreur si échec
+      await dispatch(logout()).unwrap();
       navigate("/login");
     } catch (err) {
       console.error("Erreur lors du logout :", err);
@@ -43,7 +44,6 @@ export default function Sidebar({ onClose }) {
 
   return (
     <aside className="flex flex-col h-full bg-white border-r shadow-sm w-64">
-      {/* Mobile header avec bouton fermer */}
       {onClose && (
         <div className="sm:hidden flex justify-between items-center p-4 border-b">
           <h1 className="text-xl font-bold text-blue-600">IA Admin</h1>
@@ -53,7 +53,6 @@ export default function Sidebar({ onClose }) {
         </div>
       )}
 
-      {/* Header desktop */}
       {!onClose && (
         <div className="hidden sm:block p-6 border-b">
           <h1 className="text-xl font-bold text-blue-600">IA Admin</h1>
@@ -72,7 +71,7 @@ export default function Sidebar({ onClose }) {
                   ? "bg-blue-100 text-blue-700"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
-              onClick={onClose} // ferme sidebar mobile au clic sur un lien
+              onClick={onClose}
             >
               <span className="mr-3">{item.icon}</span>
               {item.label}
