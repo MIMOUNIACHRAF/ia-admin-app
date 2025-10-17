@@ -51,7 +51,7 @@ export default function AgentsPage() {
 
   const handleMatch = async (agentId, question) => {
     try {
-      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AGENTS}${agentId}/match/`, {
+      const res = await fetch(`https://achrafpapaza.pythonanywhere.com/api/V1/agents/${agentId}/match/`, {
         method: "POST",
         body: JSON.stringify({ question }),
         headers: { "Content-Type": "application/json" },
