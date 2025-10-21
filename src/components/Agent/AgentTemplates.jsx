@@ -1,5 +1,18 @@
 import React from "react";
 
+// Composant réutilisable pour chaque template
+const TemplateCard = ({ template, onClick, buttonLabel, buttonColor }) => (
+  <div className="flex justify-between items-center p-2 border rounded-lg hover:shadow-sm transition">
+    <span className="text-gray-800">{template.nom}</span>
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 rounded-lg text-white transition ${buttonColor} hover:opacity-90`}
+    >
+      {buttonLabel}
+    </button>
+  </div>
+);
+
 export default function AgentTemplates({ agent, templates, onAssign, onUnassign }) {
   const assignedIds = Array.isArray(agent.templates)
     ? agent.templates.map(t => (typeof t === "object" ? t.id : t))
@@ -10,48 +23,41 @@ export default function AgentTemplates({ agent, templates, onAssign, onUnassign 
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
       {/* Assignés */}
       <div className="bg-white border rounded-xl shadow-md p-4 space-y-2">
         <h4 className="text-lg font-semibold text-gray-700 mb-2">Assigné</h4>
-        {assigned.length === 0 && (
+        {assigned.length === 0 ? (
           <p className="text-gray-500 italic">Aucun template assigné.</p>
-        )}
-        {assigned.map(t => (
-          <div
-            key={t.id}
-            className="flex justify-between items-center p-2 border rounded-lg hover:shadow-sm transition"
-          >
-            <span className="text-gray-800">{t.nom}</span>
-            <button
+        ) : (
+          assigned.map(t => (
+            <TemplateCard
+              key={t.id}
+              template={t}
               onClick={() => onUnassign(agent.id, t.id)}
-              className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-            >
-              Retirer
-            </button>
-          </div>
-        ))}
+              buttonLabel="Retirer"
+              buttonColor="bg-red-500"
+            />
+          ))
+        )}
       </div>
 
       {/* Disponibles */}
       <div className="bg-white border rounded-xl shadow-md p-4 space-y-2">
         <h4 className="text-lg font-semibold text-gray-700 mb-2">Disponible</h4>
-        {unassigned.length === 0 && (
+        {unassigned.length === 0 ? (
           <p className="text-gray-500 italic">Tous les templates sont assignés.</p>
-        )}
-        {unassigned.map(t => (
-          <div
-            key={t.id}
-            className="flex justify-between items-center p-2 border rounded-lg hover:shadow-sm transition"
-          >
-            <span className="text-gray-800">{t.nom}</span>
-            <button
+        ) : (
+          unassigned.map(t => (
+            <TemplateCard
+              key={t.id}
+              template={t}
               onClick={() => onAssign(agent.id, t.id)}
-              className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-            >
-              Assigner
-            </button>
-          </div>
-        ))}
+              buttonLabel="Assigner"
+              buttonColor="bg-green-500"
+            />
+          ))
+        )}
       </div>
     </div>
   );
