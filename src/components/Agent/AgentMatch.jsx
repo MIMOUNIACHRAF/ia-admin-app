@@ -36,6 +36,7 @@ export default function AgentMatch({ agent, onMatch, loading }) {
 
       {result && (
   <div className="mt-4 space-y-4 animate-fadeIn">
+
     {/* 🏆 Meilleure correspondance */}
     {result.best_match && (
       <div className="border-l-4 border-blue-600 bg-blue-50 p-4 rounded-lg shadow-sm">
@@ -43,15 +44,16 @@ export default function AgentMatch({ agent, onMatch, loading }) {
         <p className="text-gray-700 mt-1"><strong>Question :</strong> {result.best_match.question}</p>
         <p className="text-gray-700"><strong>Réponse :</strong> {result.best_match.reponse}</p>
         <p className="text-gray-500 text-sm"><strong>Score :</strong> {result.best_match.score}</p>
+        <p className="text-gray-400 text-sm"><strong>Source :</strong> {result.best_match.source}</p>
       </div>
     )}
 
     {/* 🔍 Autres suggestions */}
-    {result.other_matches && result.other_matches.length > 0 && (
+    {result.alternatives && result.alternatives.length > 0 && (
       <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
         <h4 className="text-md font-semibold text-gray-700 mb-2">🔍 Autres réponses similaires</h4>
         <div className="space-y-2">
-          {result.other_matches.map((m, i) => (
+          {result.alternatives.map((m, i) => (
             <div
               key={i}
               className="p-3 border rounded-lg bg-white hover:bg-gray-100 transition"
@@ -59,6 +61,7 @@ export default function AgentMatch({ agent, onMatch, loading }) {
               <p className="text-gray-700"><strong>Question :</strong> {m.question}</p>
               <p className="text-gray-700"><strong>Réponse :</strong> {m.reponse}</p>
               <p className="text-gray-500 text-sm"><strong>Score :</strong> {m.score}</p>
+              <p className="text-gray-400 text-sm"><strong>Source :</strong> {m.source}</p>
             </div>
           ))}
         </div>
@@ -66,11 +69,12 @@ export default function AgentMatch({ agent, onMatch, loading }) {
     )}
 
     {/* 🧠 Aucun résultat */}
-    {!result.best_match && !result.other_matches?.length && (
+    {!result.best_match && !result.alternatives?.length && (
       <p className="italic text-gray-600 bg-yellow-50 border border-yellow-300 rounded-lg p-3">
         🤖 Aucun match trouvé, passage au moteur LLM...
       </p>
     )}
+
   </div>
 )}
 
