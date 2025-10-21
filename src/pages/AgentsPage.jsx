@@ -20,10 +20,11 @@ import api from "../api/axiosInstance";
 
 export default function AgentsPage() {
   const dispatch = useDispatch();
-  const { list: agents = [], loading: agentsLoading } = useSelector(state => state.agents) || {};
-  const { list: templates = [], loading: templatesLoading } = useSelector(state => state.templates) || {};
+  const { list: agents = [], loading: agentsLoading } = useSelector((state) => state.agents) || {};
+  const { list: templates = [], loading: templatesLoading } = useSelector((state) => state.templates) || {};
 
-  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState(null);   // pour édition / détails
+  const [testingAgent, setTestingAgent] = useState(null);     // pour test direct
   const [matching, setMatching] = useState(false);
 
   // --- Fetch agents & templates au montage
@@ -35,48 +36,54 @@ export default function AgentsPage() {
   // --- Synchroniser selectedAgent avec la liste actualisée
   useEffect(() => {
     if (selectedAgent) {
-      const updated = agents.find(a => a.id === selectedAgent.id);
+      const updated = agents.find((a) => a.id === selectedAgent.id);
       if (updated) setSelectedAgent(updated);
     }
   }, [agents, selectedAgent]);
 
   // --- Soumission du formulaire (création ou mise à jour)
-  const handleSubmit = useCallback(async (data) => {
-    try {
-      if (selectedAgent) {
-        await dispatch(updateAgent({ id: selectedAgent.id, data }));
-        toast.success("Agent mis à jour avec succès !");
-      } else {
-        await dispatch(createAgent(data));
-        toast.success("Agent créé avec succès !");
+  const handleSubmit = useCallback(
+    async (data) => {
+      try {
+        if (selectedAgent) {
+          await dispatch(updateAgent({ id: selectedAgent.id, data }));
+          toast.success("Agent mis à jour avec succès !");
+        } else {
+          await dispatch(createAgent(data));
+          toast.success("Agent créé avec succès !");
+        }
+        setSelectedAgent(null);
+      } catch (err) {
+        toast.error("Erreur lors de la sauvegarde de l'agent.");
+        console.error(err);
       }
-      setSelectedAgent(null);
-    } catch (err) {
-      toast.error("Erreur lors de la sauvegarde de l'agent.");
-      console.error(err);
-    }
-  }, [dispatch, selectedAgent]);
+    },
+    [dispatch, selectedAgent]
+  );
 
   // --- Assign / Unassign templates
   const handleAssign = useCallback((agentId, templateId) => dispatch(assignTemplate({ agentId, templateId })), [dispatch]);
   const handleUnassign = useCallback((agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId })), [dispatch]);
 
   // --- Match question
-  const handleMatch = useCallback(async (agentId, question) => {
-    if (!question.trim()) return null;
-    setMatching(true);
-    try {
-      const res = await api.post(`V1//agents/${agentId}/match/`, { question });
-      setMatching(false);
-      if (res.status === 204) return { source: "llm", detail: "Aucun match local trouvé." };
-      return res.data;
-    } catch (err) {
-      setMatching(false);
-      toast.error("Erreur lors du test de l'agent.");
-      console.error(err.response?.data || err.message);
-      return null;
-    }
-  }, []);
+  const handleMatch = useCallback(
+    async (agentId, question) => {
+      if (!question.trim()) return null;
+      setMatching(true);
+      try {
+        const res = await api.post(`V1//agents/${agentId}/match/`, { question });
+        setMatching(false);
+        if (res.status === 204) return { source: "llm", detail: "Aucun match local trouvé." };
+        return res.data;
+      } catch (err) {
+        setMatching(false);
+        toast.error("Erreur lors du test de l'agent.");
+        console.error(err.response?.data || err.message);
+        return null;
+      }
+    },
+    []
+  );
 
   if (agentsLoading || templatesLoading) return <Loader />;
 
@@ -98,7 +105,7 @@ export default function AgentsPage() {
           onSubmit={handleSubmit}
           initialData={selectedAgent}
           templates={templates}
-          onCancel={() => setSelectedAgent(null)} // Bouton annuler
+          onCancel={() => setSelectedAgent(null)}
         />
       </motion.div>
 
@@ -113,13 +120,36 @@ export default function AgentsPage() {
           agents={agents}
           onEdit={setSelectedAgent}
           onDelete={(id) => dispatch(deleteAgent(id))}
+          onTest={setTestingAgent}
         />
       </motion.div>
+
+      {/* --- TEST DIRECT D'UN AGENT --- */}
+      {testingAgent && (
+        <motion.div
+          className="bg-white shadow-lg rounded-2xl p-6 hover:shadow-xl transition-shadow mt-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">
+            🧪 Tester l’agent : {testingAgent.nom}
+          </h3>
+          {matching && (
+            <div className="absolute inset-0 bg-black/10 flex justify-center items-center rounded-2xl z-40">
+              <Loader />
+            </div>
+          )}
+          <AgentMatch
+            agent={testingAgent}
+            onMatch={handleMatch}
+            loading={matching}
+          />
+        </motion.div>
+      )}
 
       {/* --- DETAILS DE L'AGENT SELECTIONNÉ --- */}
       {selectedAgent && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
           {/* --- TEMPLATES ASSIGNÉS --- */}
           <motion.div
             className="bg-white shadow-lg rounded-2xl p-6 hover:shadow-xl transition-shadow"
@@ -142,13 +172,11 @@ export default function AgentsPage() {
             animate={{ opacity: 1, x: 0 }}
           >
             <h3 className="text-xl font-semibold mb-4 text-gray-700">Test & Match Questions</h3>
-            
             {matching && (
               <div className="absolute inset-0 bg-black/10 flex justify-center items-center rounded-2xl z-40">
                 <Loader />
               </div>
             )}
-
             <AgentMatch
               agent={selectedAgent}
               onMatch={handleMatch}

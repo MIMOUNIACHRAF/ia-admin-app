@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function AgentList({ agents, onEdit, onDelete }) {
+export default function AgentList({ agents, onEdit, onDelete, onTest }) {
   if (!agents || agents.length === 0)
     return <p className="text-gray-500 italic">Aucun agent disponible.</p>;
 
@@ -26,6 +26,14 @@ export default function AgentList({ agents, onEdit, onDelete }) {
               {agent.type_agent === "ia" ? "IA" : "Traditionnel"}
             </span>
           </div>
+
+          {/* Bouton Tester */}
+          <button
+            onClick={() => onTest(agent)}
+            className="w-full px-4 py-2 mb-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+          >
+            🧪 Tester
+          </button>
 
           {/* Actions */}
           <div className="flex gap-3 mt-2">
