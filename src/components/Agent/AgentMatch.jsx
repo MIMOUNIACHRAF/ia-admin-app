@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-// Composant réutilisable pour afficher une correspondance/question
+// Composant réutilisable pour chaque correspondance/question
 const MatchCard = ({ match, highlight = false }) => (
   <div
     className={`p-4 border rounded-lg shadow-sm transition ${
@@ -27,9 +27,19 @@ export default function AgentMatch({ agent, onMatch }) {
     e.preventDefault();
     if (!question.trim()) return;
     setLoading(true);
-    const res = await onMatch(agent.id, question);
-    setResult(res);
+    try {
+      const res = await onMatch(agent.id, question);
+      setResult(res);
+    } catch (err) {
+      console.error(err);
+      setResult({ error: "Erreur lors du match. Veuillez réessayer." });
+    }
     setLoading(false);
+  };
+
+  const handleReset = () => {
+    setQuestion("");
+    setResult(null);
   };
 
   return (
@@ -54,11 +64,24 @@ export default function AgentMatch({ agent, onMatch }) {
         >
           {loading ? "Chargement..." : "Tester"}
         </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="px-3 py-2 rounded-lg bg-gray-300 text-gray-800 hover:bg-gray-400 transition"
+        >
+          Annuler
+        </button>
       </form>
 
       {/* Résultats */}
       {result && (
         <div className="space-y-4 animate-fadeIn">
+
+          {result.error && (
+            <p className="text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
+              {result.error}
+            </p>
+          )}
 
           {/* 🏆 Meilleure correspondance */}
           {result.best_match && (
@@ -81,7 +104,7 @@ export default function AgentMatch({ agent, onMatch }) {
           )}
 
           {/* 🧠 Aucun résultat */}
-          {!result.best_match && !result.alternatives?.length && (
+          {!result.best_match && !result.alternatives?.length && !result.error && (
             <p className="italic text-gray-600 bg-yellow-50 border border-yellow-300 rounded-lg p-3">
               🤖 Aucun match trouvé, passage au moteur LLM...
             </p>

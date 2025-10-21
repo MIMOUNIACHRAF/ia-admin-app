@@ -66,7 +66,7 @@ export default function AgentsPage() {
     if (!question.trim()) return null;
     setMatching(true);
     try {
-      const res = await api.post(`/agents/${agentId}/match/`, { question });
+      const res = await api.post(`V1//agents/${agentId}/match/`, { question });
       setMatching(false);
       if (res.status === 204) return { source: "llm", detail: "Aucun match local trouvé." };
       return res.data;
