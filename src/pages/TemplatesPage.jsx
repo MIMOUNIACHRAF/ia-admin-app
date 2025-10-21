@@ -87,30 +87,32 @@ export default function TemplatesPageModern() {
 
   // --- QUESTIONS CRUD ---
   const handleSubmitQuestion = async (e) => {
-    e.preventDefault();
-    if (!editingTemplate?.id) return toast.error("Sélectionnez un template");
-    if (!questionForm.question.trim()) return toast.error("Question requise");
+  e.preventDefault();
+  if (!editingTemplate?.id) return toast.error("Sélectionnez un template");
+  if (!questionForm.question.trim()) return toast.error("Question requise");
+  if (!questionForm.reponse.trim()) return toast.error("Réponse requise");
 
-    const payload = { templateId: editingTemplate.id, questionData: questionForm };
+  const payload = { ...questionForm, template: editingTemplate.id };
 
-    try {
-      setLoading(true);
-      if (editingQuestion) {
-        await dispatch(updateQuestion({ id: editingQuestion.id, data: payload }));
-        toast.success("Question modifiée !");
-        setEditingQuestion(null);
-      } else {
-        await dispatch(createQuestion(payload));
-        toast.success("Question ajoutée !");
-      }
-      setQuestionForm({ question: "", reponse: "", ordre: 1 });
-      dispatch(fetchTemplates());
-    } catch (err) {
-      toast.error("Erreur Question : " + err.message);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    if (editingQuestion) {
+      await dispatch(updateQuestion({ id: editingQuestion.id, data: payload }));
+      toast.success("Question modifiée !");
+      setEditingQuestion(null);
+    } else {
+      await dispatch(createQuestion(payload));
+      toast.success("Question ajoutée !");
     }
-  };
+    setQuestionForm({ question: "", reponse: "", ordre: 1 });
+    dispatch(fetchTemplates());
+  } catch (err) {
+    toast.error("Erreur Question : " + err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleEditQuestion = (q) => {
     setEditingQuestion(q);
