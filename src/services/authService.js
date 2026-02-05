@@ -2,20 +2,6 @@
 import api from "../api/axiosInstance";
 import { API_ENDPOINTS } from "../api/config";
 
-/**
- * authService centralisé
- * - single-flight refresh
- * - stockage access en mémoire + localStorage
- * - refresh token uniquement cookie (get/set/clear manipulant document.cookie)
- *
- * Méthodes publiques :
- * - setAccessToken / getAccessToken / clearAccessToken
- * - setRefreshToken / getRefreshToken / clearRefreshToken / isRefreshTokenPresent
- * - refreshAccessToken(onInvalidRefresh)
- * - login(credentials) / logout()
- * - performLocalLogout(callback)
- */
-
 let accessTokenMemory = null;
 let refreshPromise = null;
 
@@ -166,7 +152,7 @@ const authService = {
    */
   refreshAccessToken: async (onInvalidRefresh) => {
     const refreshToken = authService.getRefreshToken();
-
+    
     if (!refreshToken) {
       // pas de refresh possible -> logout immédiat
       authService.performLocalLogout(onInvalidRefresh);
@@ -226,6 +212,7 @@ const authService = {
     if (access) return { access };
 
     const refreshToken = authService.getRefreshToken();
+    console.log("refreshToken2", refreshToken);
     if (!refreshToken) return null;
 
     const newAccess = await authService.refreshAccessToken();

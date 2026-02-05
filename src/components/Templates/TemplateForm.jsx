@@ -1,47 +1,66 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { motion } from "framer-motion";
+import { useDispatch } from "react-redux";
+import { toast } from "react-toastify";
+import { createTemplate, updateTemplate, fetchTemplates } from "../../features/templates/templatesSlice";
 
-export default function TemplateForm({ onSubmit, initialData }) {
-  const [nom, setNom] = useState("");
-  const [description, setDescription] = useState("");
-
-  useEffect(() => {
-    if (initialData) {
-      setNom(initialData.nom || "");
-      setDescription(initialData.description || "");
-    } else {
-      setNom("");
-      setDescription("");
-    }
-  }, [initialData]);
+export default function TemplateForm({ templateForm, setTemplateForm, editingTemplate, setEditingTemplate }) {
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await onSubmit({ nom, description });
-    setNom("");
-    setDescription("");
+    if (!templateForm.nom.trim()) return toast.error("Nom requis");
+    try {
+      if (editingTemplate) {
+        await dispatch(updateTemplate({ id: editingTemplate.id, data: templateForm }));
+        toast.success("Template modifié !");
+        setEditingTemplate(null);
+      } else {
+        await dispatch(createTemplate(templateForm));
+        toast.success("Template ajouté !");
+      }
+      setTemplateForm({ nom: "", description: "" });
+      dispatch(fetchTemplates());
+    } catch (err) {
+      toast.error("Erreur : " + err.message);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingTemplate(null);
+    setTemplateForm({ nom: "", description: "" });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <motion.form
+      onSubmit={handleSubmit}
+      className="bg-gray-50 p-6 rounded-2xl shadow-lg max-w-md flex flex-col gap-4"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
       <input
-        value={nom}
-        onChange={(e) => setNom(e.target.value)}
+        type="text"
         placeholder="Nom du template"
-        className="w-full border px-3 py-2 rounded"
-        required
+        value={templateForm.nom}
+        onChange={(e) => setTemplateForm({ ...templateForm, nom: e.target.value })}
+        className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
       />
       <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
         placeholder="Description"
-        className="w-full border px-3 py-2 rounded"
+        value={templateForm.description}
+        onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+        className="border p-3 rounded-xl focus:ring-2 focus:ring-blue-400 transition"
       />
-      <button
-        type="submit"
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        {initialData ? "Mettre à jour" : "Enregistrer"}
-      </button>
-    </form>
+      <div className="flex gap-2">
+        <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition flex-1">
+          {editingTemplate ? "Modifier Template" : "Ajouter Template"}
+        </button>
+        {editingTemplate && (
+          <button type="button" onClick={handleCancel} className="bg-gray-400 text-white px-6 py-3 rounded-xl flex-1">
+            Annuler
+          </button>
+        )}
+      </div>
+    </motion.form>
   );
 }

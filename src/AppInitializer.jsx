@@ -32,6 +32,7 @@ export default function AppInitializer({ children }) {
     const initAuth = async () => {
       try {
         const refreshToken = authService.getRefreshToken();
+        console.log("refreshToken", refreshToken);
         const accessToken = authService.getAccessToken();
 
         if (!refreshToken) {

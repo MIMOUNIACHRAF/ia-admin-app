@@ -5,10 +5,11 @@ import authService from "../services/authService";
 
 let api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: true, // indispensable pour envoyer les cookies cross-origin
   headers: { "Content-Type": "application/json" },
   timeout: 5000,
 });
+
 
 export const initializeAxios = (store) => {
   const axiosInstance = axios.create({
@@ -18,42 +19,58 @@ export const initializeAxios = (store) => {
     timeout: 15000,
   });
 
-  const getRefreshFromCookie = () =>
-    (document?.cookie || "")
+  // Fonction pour récupérer le refresh token depuis cookie (si pas HttpOnly)
+  const getRefreshFromCookie = () => {
+    
+    return (document?.cookie || "")
       .split(";")
       .map((c) => c.trim())
       .find((c) => c.startsWith("refresh_token="))
       ?.split("=")[1] || null;
+  };
+      
 
-  // Request interceptor : injecte access + refresh token pour toutes les requêtes
+ 
   axiosInstance.interceptors.request.use(
-    (config) => {
-      const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, "/signup"];
-      if (openEndpoints.some((ep) => config.url?.endsWith(ep))) return config;
+  (config) => {
+    console.log("[Axios] Interceptor request pour :", config.url);
 
-      config.headers = config.headers || {};
+    const openEndpoints = [API_ENDPOINTS.LOGIN, API_ENDPOINTS.REFRESH_TOKEN, "/signup"];
+    if (openEndpoints.some((ep) => config.url?.endsWith(ep))) return config;
 
-      // Access token
-      const token = authService.getAccessToken();
-      if (token) config.headers.Authorization = `Bearer ${token}`;
+    config.headers = config.headers || {};
 
-      // Refresh token pour toutes les requêtes
-      const refresh = getRefreshFromCookie();
-      if (refresh) config.headers["X-Refresh-Token"] = refresh;
+    const token = authService.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("[Axios] Access token injecté :", token);
+    }
 
-      return config;
-    },
-    (err) => Promise.reject(err)
-  );
+    const refresh = getRefreshFromCookie();
+    if (refresh) {
+      config.headers["X-Refresh-Token"] = refresh;
+      console.log("[Axios] X-Refresh-Token injecté :", refresh);
+    }
 
-  // Response interceptor : 401 → refresh → retry
+    return config;
+  },
+  (err) => Promise.reject(err)
+);
+
+
+  // -------------------------------
+  // Response interceptor
+  // -------------------------------
   axiosInstance.interceptors.response.use(
     (response) => {
+      // Nouvelle access token depuis le backend
       const newAccess = response.headers?.["x-new-access-token"];
       if (newAccess) {
         authService._internalSetAccessToken(newAccess);
-        if (store?.dispatch)
+        if (store?.dispatch) {
           store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
+        }
+        console.log("[Axios] Nouveau access token reçu :", newAccess);
       }
       return response;
     },
@@ -64,10 +81,10 @@ export const initializeAxios = (store) => {
       const status = error.response?.status;
       const url = originalRequest.url || "";
 
-      // On ne fait jamais logout automatique sur /login
+      // Ne jamais logout automatiquement sur /login
       if (url.endsWith(API_ENDPOINTS.LOGIN)) return Promise.reject(error);
 
-      // 401 → refresh / logout
+      // 401 → essayer refresh token
       if (status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
@@ -95,6 +112,8 @@ export const initializeAxios = (store) => {
           if (store?.dispatch)
             store.dispatch({ type: "auth/setTokens", payload: { access: newAccess } });
 
+          console.log("[Axios] Retry avec nouveau access token :", newAccess);
+
           return axiosInstance(originalRequest);
         } catch (err) {
           if (store?.dispatch) store.dispatch({ type: "auth/logout" });
@@ -108,6 +127,8 @@ export const initializeAxios = (store) => {
   );
 
   api = axiosInstance;
+      
+  
   return axiosInstance;
 };
 

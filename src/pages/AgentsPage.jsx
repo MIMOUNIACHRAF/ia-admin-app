@@ -66,24 +66,42 @@ export default function AgentsPage() {
   const handleUnassign = useCallback((agentId, templateId) => dispatch(unassignTemplate({ agentId, templateId })), [dispatch]);
 
   // --- Match question
+  // const handleMatch = useCallback(
+  //   async (agentId, question) => {
+  //     if (!question.trim()) return null;
+  //     setMatching(true);
+  //     try {
+  //       const res = await api.post(`V1/agents/${agentId}/match/`, { question });
+  //       setMatching(false);
+  //       if (res.status === 204) return { source: "llm", detail: "Aucun match local trouvé." };
+  //       return res.data;
+  //     } catch (err) {
+  //       setMatching(false);
+  //       toast.error("Erreur lors du test de l'agent.");
+  //       console.error(err.response?.data || err.message);
+  //       return null;
+  //     }
+  //   },
+  //   []
+  // );
   const handleMatch = useCallback(
-    async (agentId, question) => {
-      if (!question.trim()) return null;
-      setMatching(true);
-      try {
-        const res = await api.post(`V1//agents/${agentId}/match/`, { question });
-        setMatching(false);
-        if (res.status === 204) return { source: "llm", detail: "Aucun match local trouvé." };
-        return res.data;
-      } catch (err) {
-        setMatching(false);
-        toast.error("Erreur lors du test de l'agent.");
-        console.error(err.response?.data || err.message);
-        return null;
-      }
-    },
-    []
-  );
+  async (question) => {
+    if (!question.trim()) return null;
+    setMatching(true);
+    try {
+      const res = await api.get("/api/ask/", { params: { question } }); // 🔹 GET avec query
+      setMatching(false);
+      return res.data;
+    } catch (err) {
+      setMatching(false);
+      toast.error("Erreur lors du test de l'agent.");
+      console.error(err.response?.data || err.message);
+      return null;
+    }
+  },
+  []
+);
+
 
   if (agentsLoading || templatesLoading) return <Loader />;
 
